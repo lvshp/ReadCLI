@@ -177,12 +177,24 @@ func parseTOCNumber() (int, bool) {
 }
 
 func tocPageSize() int {
+	if p != nil && p.Inner.Dy() > 0 {
+		reservedLines := 4
+		if tocNumber != "" {
+			reservedLines++
+		}
+
+		available := p.Inner.Dy() - reservedLines
+		if available > 0 {
+			return available
+		}
+	}
+
 	_, height := ui.TerminalDimensions()
-	if height <= 5 {
+	if height <= 8 {
 		return 1
 	}
 
-	return height - 5
+	return height - 8
 }
 
 func setDisplayLines(lines int) {
