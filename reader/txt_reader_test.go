@@ -80,16 +80,20 @@ func TestTxtReaderDeduplicatesRepeatedChapterHeadings(t *testing.T) {
 	}
 }
 
-func TestInferTXTBookTitle(t *testing.T) {
+func TestTxtReaderBookTitleFallsBackToFileName(t *testing.T) {
+	tempDir := t.TempDir()
+	bookPath := filepath.Join(tempDir, "测试小说.txt")
 	text := "《测试小说》\n作者：某人\n\n第1章 开始\n正文"
-	if got := inferTXTBookTitle(text); got != "测试小说" {
-		t.Fatalf("inferTXTBookTitle() = %q", got)
+	if err := os.WriteFile(bookPath, []byte(text), 0644); err != nil {
+		t.Fatalf("write txt: %v", err)
 	}
-}
 
-func TestInferTXTBookTitleSkipsChapterHeading(t *testing.T) {
-	text := "第1章 开始\n正文第一段"
-	if got := inferTXTBookTitle(text); got != "" {
-		t.Fatalf("inferTXTBookTitle() = %q, want empty", got)
+	r := NewTxtReader()
+	if err := r.Load(bookPath); err != nil {
+		t.Fatalf("load txt: %v", err)
 	}
-}
+
+	if got := r.BookTitle(); got != "" {
+		t.Fatalf("BookTitle() = %q, want empty", got)
+	}
+	}

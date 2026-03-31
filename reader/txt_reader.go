@@ -10,7 +10,6 @@ import (
 type TxtReader struct {
 	contentReader
 	chapters []txtChapter
-	title    string
 }
 
 type txtChapter struct {
@@ -34,12 +33,11 @@ func (txt *TxtReader) Load(path string) error {
 
 	txt.setContent(normalizeTXTContent(string(data)))
 	txt.buildChapters()
-	txt.title = inferTXTBookTitle(txt.rawText)
 	return nil
 }
 
 func (txt *TxtReader) BookTitle() string {
-	return strings.TrimSpace(txt.title)
+	return ""
 }
 
 func (txt *TxtReader) Reflow(width int) {
@@ -177,6 +175,8 @@ var txtChapterPatterns = []*regexp.Regexp{
 	regexp.MustCompile(`(?i)^epilogue[^\n]{0,40}$`),
 }
 
+var looseTXTChapterPattern = regexp.MustCompile(`(?i)^第\s*[0-9零一二三四五六七八九十百千万两]+\s*[章节卷集回部篇].*`)
+
 func inferTXTChapterTitle(line string) (string, bool) {
 	line = strings.TrimSpace(line)
 	if line == "" {
@@ -258,7 +258,7 @@ func inferTXTBookTitle(text string) string {
 		if seenChapter {
 			return ""
 		}
-		if looksLikeTXTBookTitle(line) {
+		if looksLikeStandaloneTXTBookTitle(line) {
 			return strings.Trim(line, "《》[]【】")
 		}
 	}
@@ -297,4 +297,41 @@ func looksLikeTXTBookTitle(line string) bool {
 		return false
 	}
 	return true
+}
+
+func looksLikeStandaloneTXTBookTitle(line string) bool {
+	line = strings.TrimSpace(line)
+	if !looksLikeTXTBookTitle(line) {
+		return false
+	}
+	if len([]rune(line)) > 30 {
+		return false
+	}
+	trimmed := strings.Trim(line, "《》[]【】\"'")
+	lower := strings.ToLower(trimmed)
+	if strings.Contains(lower, "www.") || strings.Contains(lower, ".com") || strings.Contains(lower, ".cn") {
+		return false
+	}
+	if looseTXTChapterHeading(trimmed) {
+		return false
+	}
+	if strings.ContainsAny(trimmed, "，。！？；：、,.!?;:=<>/\\|") {
+		return false
+	}
+	if strings.Contains(trimmed, "作者") || strings.Contains(trimmed, "正文") || strings.Contains(trimmed, "校对") {
+		return false
+	}
+	if strings.Contains(trimmed, "  ") {
+		return false
+	}
+	return true
+}
+
+func looseTXTChapterHeading(line string) bool {
+	line = strings.TrimSpace(line)
+	if line == "" {
+		return false
+	}
+	line = strings.Trim(line, "《》[]【】\"'")
+	return looseTXTChapterPattern.MatchString(line)
 }
