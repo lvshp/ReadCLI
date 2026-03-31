@@ -129,9 +129,9 @@ func handleReadingEvent(id string) {
 		} else {
 			app.rowNumber = "g"
 		}
-	case "+":
+	case "+", "=":
 		setDisplayLines(app.displayLines + 1)
-	case "-":
+	case "-", "_":
 		setDisplayLines(app.displayLines - 1)
 	case "c":
 		app.color++
