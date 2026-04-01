@@ -233,7 +233,7 @@ func (epub *EpubReader) PrevChapter() string {
 
 func (epub *EpubReader) GetTOC() string {
 	if epub.toc == "" {
-		return "No table of contents available."
+		return "没有可用目录。"
 	}
 
 	return epub.toc
@@ -264,9 +264,9 @@ func (epub *EpubReader) GetTOCWithSelection(selected, pageSize int) string {
 	}
 
 	var builder strings.Builder
-	builder.WriteString("Table of Contents\n")
-	builder.WriteString("j/k to move, number + Enter to open, m to close\n")
-	builder.WriteString(fmt.Sprintf("Page %d/%d\n", start/pageSize+1, (len(epub.chapters)+pageSize-1)/pageSize))
+	builder.WriteString("目录\n")
+	builder.WriteString("j/k 移动，数字 + 回车跳转，m 返回\n")
+	builder.WriteString(fmt.Sprintf("第 %d/%d 页\n", start/pageSize+1, (len(epub.chapters)+pageSize-1)/pageSize))
 	for i := start; i < end; i++ {
 		chapter := epub.chapters[i]
 		prefix := "  "
@@ -279,7 +279,7 @@ func (epub *EpubReader) GetTOCWithSelection(selected, pageSize int) string {
 			prefix = "* "
 		}
 
-		builder.WriteString(fmt.Sprintf("%s %d. %s\n", prefix, i+1, chapter.Title))
+		builder.WriteString(fmt.Sprintf("%s %s\n", prefix, chapter.Title))
 	}
 
 	return strings.TrimRight(builder.String(), "\n")
@@ -587,9 +587,10 @@ func buildTOC(chapters []epubChapter) string {
 	}
 
 	var builder strings.Builder
-	builder.WriteString("Table of Contents\n")
-	for i, chapter := range chapters {
-		builder.WriteString(fmt.Sprintf("%d. %s\n", i+1, chapter.Title))
+	builder.WriteString("目录\n")
+	for _, chapter := range chapters {
+		builder.WriteString(chapter.Title)
+		builder.WriteString("\n")
 	}
 
 	return strings.TrimRight(builder.String(), "\n")

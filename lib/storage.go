@@ -46,10 +46,11 @@ type BookmarkStore struct {
 }
 
 const (
-	appName          = "readcli"
-	dataDirName      = ".readcli"
-	legacyRootDir    = "readcli"
-	legacyAppName    = "glance"
+	appName       = "readcli"
+	dataDirName   = ".readcli"
+	legacyRootDir = "readcli"
+	legacyAppName = "glance"
+	dataDirEnv    = "READCLI_DATA_DIR"
 )
 
 func configFilePath() (string, error) { return glanceDataPath("config.json") }
@@ -61,12 +62,20 @@ func bookmarksFilePath() (string, error) {
 }
 
 func glanceDataPath(name string) (string, error) {
+	if dir := strings.TrimSpace(os.Getenv(dataDirEnv)); dir != "" {
+		return filepath.Join(dir, name), nil
+	}
+
 	homeDir, err := os.UserHomeDir()
 	if err != nil {
 		return "", err
 	}
 
 	return filepath.Join(homeDir, dataDirName, name), nil
+}
+
+func DataDirPath() (string, error) {
+	return glanceDataPath("")
 }
 
 func legacyRootDataPath(name string) (string, error) {

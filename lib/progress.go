@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"os"
 	"path/filepath"
+	"strings"
 )
 
 type ProgressStore struct {
@@ -11,6 +12,10 @@ type ProgressStore struct {
 }
 
 func progressFilePath() (string, error) {
+	if dir := strings.TrimSpace(os.Getenv(dataDirEnv)); dir != "" {
+		return filepath.Join(dir, "progress.json"), nil
+	}
+
 	homeDir, err := os.UserHomeDir()
 	if err != nil {
 		return "", err

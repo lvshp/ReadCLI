@@ -8,6 +8,7 @@ import (
 func TestConfigRoundTrip(t *testing.T) {
 	tempHome := t.TempDir()
 	t.Setenv("HOME", tempHome)
+	t.Setenv("READCLI_DATA_DIR", filepath.Join(tempHome, ".readcli-test"))
 
 	cfg := &Config{Theme: "jetbrains", DisplayLines: 12, ShowBorder: false}
 	if err := SaveConfig(cfg); err != nil {

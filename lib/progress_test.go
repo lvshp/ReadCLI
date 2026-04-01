@@ -2,12 +2,14 @@ package lib
 
 import (
 	"os"
+	"path/filepath"
 	"testing"
 )
 
 func TestLoadSaveProgress(t *testing.T) {
 	tempHome := t.TempDir()
 	t.Setenv("HOME", tempHome)
+	t.Setenv("READCLI_DATA_DIR", filepath.Join(tempHome, ".readcli-test"))
 
 	store, err := LoadProgress()
 	if err != nil {

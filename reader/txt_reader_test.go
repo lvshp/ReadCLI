@@ -19,7 +19,7 @@ func TestTxtReaderBuildsTOCFromChapterHeadings(t *testing.T) {
 		t.Fatalf("load txt: %v", err)
 	}
 
-	if got := r.GetTOC(); got != "Table of Contents\n1. 第1章 山中少年\n2. 第2章 下山" {
+	if got := r.GetTOC(); got != "目录\n第1章 山中少年\n第2章 下山" {
 		t.Fatalf("toc = %q", got)
 	}
 
@@ -45,7 +45,7 @@ func TestTxtReaderTOCSelectionAndGotoChapter(t *testing.T) {
 		t.Fatalf("load txt: %v", err)
 	}
 
-	if got := r.GetTOCWithSelection(1, 2); got != "Table of Contents\nj/k to move, number + Enter to open, m to close\nPage 1/2\n*  1. 第1章 开始\n>  2. 第2章 发展" {
+	if got := r.GetTOCWithSelection(1, 2); got != "目录\nj/k 移动，数字 + 回车跳转，m 返回\n第 1/2 页\n*  第1章 开始\n>  第2章 发展" {
 		t.Fatalf("selected toc = %q", got)
 	}
 
@@ -53,7 +53,7 @@ func TestTxtReaderTOCSelectionAndGotoChapter(t *testing.T) {
 		t.Fatalf("goto chapter current line = %q", got)
 	}
 
-	if got := r.GetTOCWithSelection(2, 2); got != "Table of Contents\nj/k to move, number + Enter to open, m to close\nPage 2/2\n*> 3. 第3章 结尾" {
+	if got := r.GetTOCWithSelection(2, 2); got != "目录\nj/k 移动，数字 + 回车跳转，m 返回\n第 2/2 页\n*> 第3章 结尾" {
 		t.Fatalf("paged toc = %q", got)
 	}
 }
@@ -75,7 +75,7 @@ func TestTxtReaderDeduplicatesRepeatedChapterHeadings(t *testing.T) {
 		t.Fatalf("current view = %q", got)
 	}
 
-	if got := r.GetTOC(); got != "Table of Contents\n1. 第七章 清风观" {
+	if got := r.GetTOC(); got != "目录\n第七章 清风观" {
 		t.Fatalf("toc = %q", got)
 	}
 }
@@ -96,4 +96,4 @@ func TestTxtReaderBookTitleFallsBackToFileName(t *testing.T) {
 	if got := r.BookTitle(); got != "" {
 		t.Fatalf("BookTitle() = %q, want empty", got)
 	}
-	}
+}

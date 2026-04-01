@@ -11,6 +11,7 @@ import (
 
 func TestImportBooksFromDirectory(t *testing.T) {
 	tempDir := t.TempDir()
+	t.Setenv("READCLI_DATA_DIR", filepath.Join(tempDir, "readcli-test-data"))
 	txtPath := filepath.Join(tempDir, "one.txt")
 	epubPath := filepath.Join(tempDir, "two.epub")
 	otherPath := filepath.Join(tempDir, "ignore.md")
@@ -67,6 +68,7 @@ func TestImportBooksFromDirectory(t *testing.T) {
 
 func TestImportBooksFromDirectoryRecursive(t *testing.T) {
 	tempDir := t.TempDir()
+	t.Setenv("READCLI_DATA_DIR", filepath.Join(tempDir, "readcli-test-data"))
 	topTxt := filepath.Join(tempDir, "one.txt")
 	nestedDir := filepath.Join(tempDir, "nested")
 	nestedTxt := filepath.Join(nestedDir, "two.txt")

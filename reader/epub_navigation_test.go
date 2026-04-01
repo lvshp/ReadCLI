@@ -58,11 +58,11 @@ func TestEpubReaderUsesNavTitlesAndChapterNavigation(t *testing.T) {
 		t.Fatalf("chapter title = %q, want %q", got, "One")
 	}
 
-	if got := r.GetTOC(); got != "Table of Contents\n1. One\n2. Two" {
+	if got := r.GetTOC(); got != "目录\nOne\nTwo" {
 		t.Fatalf("toc = %q", got)
 	}
 
-	if got := r.GetTOCWithSelection(1, 10); got != "Table of Contents\nj/k to move, number + Enter to open, m to close\nPage 1/1\n*  1. One\n>  2. Two" {
+	if got := r.GetTOCWithSelection(1, 10); got != "目录\nj/k 移动，数字 + 回车跳转，m 返回\n第 1/1 页\n*  One\n>  Two" {
 		t.Fatalf("selected toc = %q", got)
 	}
 
@@ -82,7 +82,7 @@ func TestEpubReaderUsesNavTitlesAndChapterNavigation(t *testing.T) {
 		t.Fatalf("goto chapter current line = %q, want %q", got, "Ignored 2")
 	}
 
-	if got := r.GetTOCWithSelection(1, 1); got != "Table of Contents\nj/k to move, number + Enter to open, m to close\nPage 2/2\n*> 2. Two" {
+	if got := r.GetTOCWithSelection(1, 1); got != "目录\nj/k 移动，数字 + 回车跳转，m 返回\n第 2/2 页\n*> Two" {
 		t.Fatalf("paged toc = %q", got)
 	}
 }
@@ -128,7 +128,7 @@ func TestEpubReaderSkipsCoverFrontMatterOnOpen(t *testing.T) {
 		t.Fatalf("current line = %q, want %q", got, "Chapter 1")
 	}
 
-	if got := r.GetTOC(); got != "Table of Contents\n1. Chapter 1" {
+	if got := r.GetTOC(); got != "目录\nChapter 1" {
 		t.Fatalf("toc = %q", got)
 	}
 }

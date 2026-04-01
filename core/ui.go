@@ -1,6 +1,9 @@
 package core
 
 import (
+	"crypto/sha1"
+	"encoding/hex"
+	"encoding/json"
 	"fmt"
 	"log"
 	"os"
@@ -50,6 +53,7 @@ type appState struct {
 	reader      reader.Reader
 	currentFile string
 	currentBook *lib.BookshelfBook
+	readerCache map[string]cachedReader
 
 	config    *lib.Config
 	bookshelf *lib.BookshelfStore
@@ -88,9 +92,20 @@ type appState struct {
 
 	deleteTargetPath  string
 	deleteTargetTitle string
+	loadingBookPath   string
 
 	lastHomePath string
 	quit         bool
+}
+
+type cachedReader struct {
+	reader   reader.Reader
+	modStamp int64
+}
+
+type persistentReaderCache struct {
+	ModStamp int64           `json:"mod_stamp"`
+	Snapshot reader.Snapshot `json:"snapshot"`
 }
 
 var (
@@ -188,6 +203,7 @@ func Run(initialFile string, requestedLines int) {
 		bookshelf:       shelf,
 		bookmarks:       marks,
 		progress:        progress,
+		readerCache:     map[string]cachedReader{},
 		themeOrder:      []string{"vscode", "jetbrains", "ops-console"},
 		sortMode:        "recent",
 		filterMode:      "all",
@@ -273,11 +289,8 @@ func openBook(path string) error {
 		path = abs
 	}
 
-	r, err := newReaderForPath(path)
+	r, _, err := cachedReaderForPath(path)
 	if err != nil {
-		return err
-	}
-	if err := r.Load(path); err != nil {
 		return err
 	}
 
@@ -312,6 +325,112 @@ func openBook(path string) error {
 	applyLayoutFromTerminal()
 	app.statusMessage = "已打开 " + filepath.Base(path)
 	return nil
+}
+
+func cachedReaderForPath(path string) (reader.Reader, bool, error) {
+	modStamp := fileModStamp(path)
+	if app != nil && app.readerCache != nil {
+		if cached, ok := app.readerCache[path]; ok && cached.reader != nil && cached.modStamp == modStamp {
+			return cached.reader, true, nil
+		}
+	}
+
+	if r, ok, err := loadPersistentCachedReader(path, modStamp); err == nil && ok {
+		if app != nil {
+			if app.readerCache == nil {
+				app.readerCache = map[string]cachedReader{}
+			}
+			app.readerCache[path] = cachedReader{reader: r, modStamp: modStamp}
+		}
+		return r, true, nil
+	}
+
+	r, err := newReaderForPath(path)
+	if err != nil {
+		return nil, false, err
+	}
+	if err := r.Load(path); err != nil {
+		return nil, false, err
+	}
+
+	if app != nil {
+		if app.readerCache == nil {
+			app.readerCache = map[string]cachedReader{}
+		}
+		app.readerCache[path] = cachedReader{reader: r, modStamp: modStamp}
+	}
+	_ = savePersistentReaderCache(path, modStamp, r)
+	return r, false, nil
+}
+
+func fileModStamp(path string) int64 {
+	info, err := os.Stat(path)
+	if err != nil {
+		return 0
+	}
+	return info.ModTime().UnixNano()
+}
+
+func loadPersistentCachedReader(path string, modStamp int64) (reader.Reader, bool, error) {
+	cachePath, err := persistentCachePath(path)
+	if err != nil {
+		return nil, false, err
+	}
+	data, err := os.ReadFile(cachePath)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return nil, false, nil
+		}
+		return nil, false, err
+	}
+	var cached persistentReaderCache
+	if err := json.Unmarshal(data, &cached); err != nil {
+		return nil, false, err
+	}
+	if cached.ModStamp != modStamp {
+		return nil, false, nil
+	}
+	width := app.contentWidth
+	if width <= 0 {
+		width = 80
+	}
+	r, err := reader.ReaderFromSnapshot(cached.Snapshot, width)
+	if err != nil {
+		return nil, false, err
+	}
+	return r, true, nil
+}
+
+func savePersistentReaderCache(path string, modStamp int64, r reader.Reader) error {
+	snapshot, ok := reader.SnapshotFromReader(r)
+	if !ok || snapshot == nil {
+		return nil
+	}
+	cachePath, err := persistentCachePath(path)
+	if err != nil {
+		return err
+	}
+	if err := os.MkdirAll(filepath.Dir(cachePath), 0755); err != nil {
+		return err
+	}
+	data, err := json.Marshal(persistentReaderCache{
+		ModStamp: modStamp,
+		Snapshot: *snapshot,
+	})
+	if err != nil {
+		return err
+	}
+	return os.WriteFile(cachePath, data, 0644)
+}
+
+func persistentCachePath(path string) (string, error) {
+	dataDir, err := lib.DataDirPath()
+	if err != nil {
+		return "", err
+	}
+	sum := sha1.Sum([]byte(path))
+	name := hex.EncodeToString(sum[:]) + ".json"
+	return filepath.Join(dataDir, "cache", name), nil
 }
 
 func newReaderForPath(path string) (reader.Reader, error) {
@@ -501,7 +620,7 @@ func applyLayout(termWidth, termHeight int) {
 	}
 	mainPanel.SetRect(leftWidth, contentTop, width-rightWidth, contentBottom)
 
-	app.contentWidth = readingWidth(mainWidth)
+	app.contentWidth = readingContentWidth(mainWidth)
 	if app.reader != nil {
 		app.reader.Reflow(app.contentWidth)
 	}
@@ -1020,8 +1139,53 @@ func buildMainPanel() string {
 		if app.reader == nil {
 			return "未打开书籍"
 		}
-		return highlightSearchMatches(app.reader.CurrentView(app.displayLines), app.searchQuery)
+		return formatReadingPanel(highlightSearchMatches(app.reader.CurrentView(readingVisibleSourceLines()), app.searchQuery))
 	}
+}
+
+func readingContentWidth(mainWidth int) int {
+	width := readingWidth(mainWidth)
+	if width <= 0 {
+		return 80
+	}
+	if app != nil && app.reader != nil {
+		narrow := width * 3 / 4
+		if narrow < 28 {
+			narrow = 28
+		}
+		if narrow > width {
+			narrow = width
+		}
+		return narrow
+	}
+	return width
+}
+
+func readingVisibleSourceLines() int {
+	if app == nil || app.displayLines < 1 {
+		return 1
+	}
+	lines := (app.displayLines + 1) / 2
+	if lines < 1 {
+		lines = 1
+	}
+	return lines
+}
+
+func formatReadingPanel(text string) string {
+	text = strings.TrimRight(text, "\n")
+	if text == "" {
+		return ""
+	}
+	lines := strings.Split(text, "\n")
+	padded := make([]string, 0, len(lines)*2)
+	for i, line := range lines {
+		padded = append(padded, "  "+line)
+		if i != len(lines)-1 {
+			padded = append(padded, "")
+		}
+	}
+	return strings.Join(padded, "\n")
 }
 
 func highlightSearchMatches(text, query string) string {
@@ -1152,6 +1316,17 @@ func buildBookshelfPanel() string {
 	th := currentTheme()
 	lines = append(lines, "["+titleCase(th.HomeName)+"](fg:cyan,mod:bold)")
 	lines = append(lines, "")
+	if app.loadingBookPath != "" {
+		bookName := strings.TrimSuffix(filepath.Base(app.loadingBookPath), filepath.Ext(app.loadingBookPath))
+		lines = append(lines,
+			"正在打开：",
+			"",
+			"  "+shortenDisplay(bookName, bookshelfTitleWidth()),
+			"",
+			"请稍等，正在加载正文和目录…",
+		)
+		return strings.Join(lines, "\n")
+	}
 	if len(books) == 0 {
 		switch th.Name {
 		case "jetbrains":
@@ -1743,10 +1918,10 @@ func moveReading(delta int) {
 }
 
 func pageStep() int {
-	if app.displayLines < 1 {
+	if readingVisibleSourceLines() < 1 {
 		return 1
 	}
-	return app.displayLines
+	return readingVisibleSourceLines()
 }
 
 func switchTheme() {
@@ -2060,9 +2235,15 @@ func openSelectedBook() {
 		app.statusMessage = "书架为空"
 		return
 	}
+	app.loadingBookPath = book.Path
+	app.statusMessage = "正在打开 " + shorten(filepath.Base(book.Path), 24)
+	renderUIIfReady()
 	if err := openBook(book.Path); err != nil {
+		app.loadingBookPath = ""
 		app.statusMessage = err.Error()
+		return
 	}
+	app.loadingBookPath = ""
 }
 
 func removeSelectedBook(deleteFile bool) {
@@ -2074,6 +2255,10 @@ func removeSelectedBook(deleteFile bool) {
 		_ = os.Remove(path)
 	}
 	lib.RemoveBookshelfBook(app.bookshelf, path)
+	delete(app.readerCache, path)
+	if cachePath, err := persistentCachePath(path); err == nil {
+		_ = os.Remove(cachePath)
+	}
 	delete(app.progress.Books, path)
 	delete(app.bookmarks.Books, path)
 	_ = lib.SaveBookshelf(app.bookshelf)

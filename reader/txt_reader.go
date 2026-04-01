@@ -1,9 +1,9 @@
 package reader
 
 import (
+	"fmt"
 	"os"
 	"regexp"
-	"strconv"
 	"strings"
 )
 
@@ -82,12 +82,12 @@ func (txt *TxtReader) PrevChapter() string {
 
 func (txt *TxtReader) GetTOC() string {
 	if len(txt.chapters) == 0 {
-		return "No table of contents available."
+		return "没有可用目录。"
 	}
 	var lines []string
-	lines = append(lines, "Table of Contents")
-	for i, chapter := range txt.chapters {
-		lines = append(lines, formatChapterLine(i+1, chapter.Title))
+	lines = append(lines, "目录")
+	for _, chapter := range txt.chapters {
+		lines = append(lines, chapter.Title)
 	}
 	return strings.Join(lines, "\n")
 }
@@ -114,8 +114,8 @@ func (txt *TxtReader) GetTOCWithSelection(selected, pageSize int) string {
 	}
 
 	var lines []string
-	lines = append(lines, "Table of Contents")
-	lines = append(lines, "j/k to move, number + Enter to open, m to close")
+	lines = append(lines, "目录")
+	lines = append(lines, "j/k 移动，数字 + 回车跳转，m 返回")
 	lines = append(lines, pageIndicator(start, pageSize, len(txt.chapters)))
 	for i := start; i < end; i++ {
 		prefix := "  "
@@ -127,7 +127,7 @@ func (txt *TxtReader) GetTOCWithSelection(selected, pageSize int) string {
 		case i == current:
 			prefix = "* "
 		}
-		lines = append(lines, prefix+" "+formatChapterLine(i+1, txt.chapters[i].Title))
+		lines = append(lines, prefix+" "+txt.chapters[i].Title)
 	}
 	return strings.Join(lines, "\n")
 }
@@ -229,12 +229,8 @@ func normalizeChapterTitle(value string) string {
 	return value
 }
 
-func formatChapterLine(index int, title string) string {
-	return strconv.Itoa(index) + ". " + title
-}
-
 func pageIndicator(start, pageSize, total int) string {
-	return "Page " + strconv.Itoa(start/pageSize+1) + "/" + strconv.Itoa((total+pageSize-1)/pageSize)
+	return fmt.Sprintf("第 %d/%d 页", start/pageSize+1, (total+pageSize-1)/pageSize)
 }
 
 func inferTXTBookTitle(text string) string {
