@@ -1178,7 +1178,8 @@ func formatReadingPanel(text string) string {
 		return ""
 	}
 	lines := strings.Split(text, "\n")
-	padded := make([]string, 0, len(lines)*2)
+	padded := make([]string, 0, len(lines)*2+1)
+	padded = append(padded, "")
 	for i, line := range lines {
 		padded = append(padded, "  "+line)
 		if i != len(lines)-1 {
