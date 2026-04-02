@@ -15,7 +15,9 @@ func TestConfigRoundTrip(t *testing.T) {
 		DisplayLines:             12,
 		ShowBorder:               false,
 		SkippedUpdateVersion:     "v0.1.9",
+		BossKeyCommand:           "  /usr/local/bin/genact --stdin  ",
 		ForceBasicColor:          true,
+		AutoPageIntervalMs:       4200,
 		ReadingContentWidthRatio: 0.8,
 		ReadingMarginLeft:        3,
 		ReadingMarginTop:         2,
@@ -37,8 +39,14 @@ func TestConfigRoundTrip(t *testing.T) {
 	if loaded.SkippedUpdateVersion != "v0.1.9" {
 		t.Fatalf("SkippedUpdateVersion = %q, want v0.1.9", loaded.SkippedUpdateVersion)
 	}
+	if loaded.BossKeyCommand != "/usr/local/bin/genact --stdin" {
+		t.Fatalf("BossKeyCommand = %q, want /usr/local/bin/genact --stdin", loaded.BossKeyCommand)
+	}
 	if !loaded.ForceBasicColor {
 		t.Fatalf("ForceBasicColor = false, want true")
+	}
+	if loaded.AutoPageIntervalMs != 4200 {
+		t.Fatalf("AutoPageIntervalMs = %d, want 4200", loaded.AutoPageIntervalMs)
 	}
 	if loaded.ReadingContentWidthRatio != 0.8 || loaded.ReadingMarginLeft != 3 || loaded.ReadingMarginTop != 2 {
 		t.Fatalf("unexpected reading layout config: %#v", loaded)
@@ -58,6 +66,7 @@ func TestLoadConfigSanitizesInvalidReadingOptions(t *testing.T) {
 		Theme:                    "vscode",
 		DisplayLines:             -5,
 		ShowBorder:               true,
+		AutoPageIntervalMs:       -1,
 		ReadingContentWidthRatio: 2,
 		ReadingMarginLeft:        -1,
 		ReadingMarginRight:       -2,
@@ -79,6 +88,9 @@ func TestLoadConfigSanitizesInvalidReadingOptions(t *testing.T) {
 	}
 	if loaded.ReadingContentWidthRatio != 0.75 {
 		t.Fatalf("ReadingContentWidthRatio = %v, want 0.75", loaded.ReadingContentWidthRatio)
+	}
+	if loaded.AutoPageIntervalMs != 3500 {
+		t.Fatalf("AutoPageIntervalMs = %d, want 3500", loaded.AutoPageIntervalMs)
 	}
 	if loaded.ReadingMarginLeft != 2 || loaded.ReadingMarginRight != 0 || loaded.ReadingMarginTop != 1 || loaded.ReadingMarginBottom != 0 {
 		t.Fatalf("unexpected margin defaults: %#v", loaded)

@@ -7,6 +7,8 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"os/exec"
+	"os/signal"
 	"path/filepath"
 	"regexp"
 	"runtime"
@@ -1838,10 +1840,18 @@ func readingSettingsItems() []readingSettingItem {
 		{Label: "上边距", Value: fmt.Sprintf("%d", readingMarginTop())},
 		{Label: "下边距", Value: fmt.Sprintf("%d", readingMarginBottom())},
 		{Label: "行间距", Value: fmt.Sprintf("%d", readingLineSpacing())},
+		{Label: "翻页间隔", Value: formatAutoPageInterval()},
 		{Label: "字体颜色", Value: colorValue},
 		{Label: "高对比", Value: onOffText(app.config != nil && app.config.ReadingHighContrast)},
 		{Label: "基础色模式", Value: onOffText(app.config != nil && app.config.ForceBasicColor)},
 	}
+}
+
+func formatAutoPageInterval() string {
+	if app == nil || app.config == nil {
+		return "3.5 秒"
+	}
+	return fmt.Sprintf("%.1f 秒", float64(app.config.AutoPageIntervalMs)/1000)
 }
 
 func onOffText(value bool) string {
@@ -2459,6 +2469,9 @@ func setDisplayLines(lines int) {
 }
 
 func displayBossKey() {
+	if runConfiguredBossProgram() {
+		return
+	}
 	app.bossKey = !app.bossKey
 	if app.bossKey {
 		app.showHelp = false
@@ -2467,6 +2480,40 @@ func displayBossKey() {
 		return
 	}
 	app.statusMessage = "Boss Key 已关闭"
+}
+
+func runConfiguredBossProgram() bool {
+	if app == nil || app.config == nil {
+		return false
+	}
+	command := strings.TrimSpace(app.config.BossKeyCommand)
+	if command == "" {
+		return false
+	}
+
+	ui.Close()
+	shell := strings.TrimSpace(os.Getenv("SHELL"))
+	if shell == "" {
+		shell = "/bin/sh"
+	}
+	cmd := exec.Command(shell, "-lc", command)
+	cmd.Stdin = os.Stdin
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
+	signal.Ignore(os.Interrupt)
+	err := cmd.Run()
+	signal.Reset(os.Interrupt)
+	if initErr := ui.Init(); initErr != nil {
+		log.Fatalf("failed to reinitialize termui: %v", initErr)
+	}
+	initWidgets()
+	applyLayoutFromTerminal()
+	if err != nil {
+		app.statusMessage = "老板键程序退出: " + err.Error()
+	} else {
+		app.statusMessage = "已返回阅读界面"
+	}
+	return true
 }
 
 func moveReading(delta int) {
@@ -2531,8 +2578,11 @@ func adjustReadingSetting(delta int) {
 		app.config.ReadingMarginBottom = max(0, app.config.ReadingMarginBottom+delta)
 	case 5:
 		app.config.ReadingLineSpacing = max(0, app.config.ReadingLineSpacing+delta)
+	case 6:
+		app.config.AutoPageIntervalMs = max(500, app.config.AutoPageIntervalMs+delta*500)
 	}
 	_ = lib.SaveConfig(app.config)
+	refreshTimerTicker()
 	if app.reader != nil {
 		applyLayoutFromTerminal()
 	}
@@ -2544,15 +2594,15 @@ func activateReadingSetting() {
 		return
 	}
 	switch app.settingsIndex {
-	case 6:
+	case 7:
 		app.mode = modeReadingColorInput
 		app.inputValue = app.config.ReadingTextColor
 		app.inputCursor = len([]rune(app.inputValue))
-	case 7:
+	case 8:
 		app.config.ReadingHighContrast = !app.config.ReadingHighContrast
 		_ = lib.SaveConfig(app.config)
 		app.statusMessage = "高对比已切换"
-	case 8:
+	case 9:
 		app.config.ForceBasicColor = !app.config.ForceBasicColor
 		_ = lib.SaveConfig(app.config)
 		if app.config.ForceBasicColor {
@@ -2617,22 +2667,41 @@ func toggleBorder() {
 func toggleTimer() {
 	app.timer = !app.timer
 	if app.timer {
-		app.ticker = time.NewTicker(interval * time.Millisecond)
-		go func() {
-			for range app.ticker.C {
-				if app.mode == modeReading && app.reader != nil {
-					moveReading(pageStep())
-					renderUI()
-				}
-			}
-		}()
+		refreshTimerTicker()
 		app.statusMessage = "自动翻页已开启"
 		return
 	}
 	if app.ticker != nil {
 		app.ticker.Stop()
+		app.ticker = nil
 	}
 	app.statusMessage = "自动翻页已关闭"
+}
+
+func refreshTimerTicker() {
+	if app == nil || !app.timer {
+		return
+	}
+	if app.ticker != nil {
+		app.ticker.Stop()
+	}
+	intervalMs := 3500
+	if app.config != nil && app.config.AutoPageIntervalMs >= 100 {
+		intervalMs = app.config.AutoPageIntervalMs
+	}
+	ticker := time.NewTicker(time.Duration(intervalMs) * time.Millisecond)
+	app.ticker = ticker
+	go func(local *time.Ticker) {
+		for range local.C {
+			if app.ticker != local || !app.timer {
+				return
+			}
+			if app.mode == modeReading && app.reader != nil {
+				moveReading(pageStep())
+				renderUI()
+			}
+		}
+	}(ticker)
 }
 
 func saveBookmark() {

@@ -16,7 +16,9 @@ type Config struct {
 	ShowBorder               bool    `json:"show_border"`
 	SelectedBookshelf        int     `json:"selected_bookshelf"`
 	SkippedUpdateVersion     string  `json:"skipped_update_version"`
+	BossKeyCommand           string  `json:"boss_key_command"`
 	ForceBasicColor          bool    `json:"force_basic_color"`
+	AutoPageIntervalMs       int     `json:"auto_page_interval_ms"`
 	ReadingContentWidthRatio float64 `json:"reading_content_width_ratio"`
 	ReadingMarginLeft        int     `json:"reading_margin_left"`
 	ReadingMarginRight       int     `json:"reading_margin_right"`
@@ -138,6 +140,7 @@ func defaultConfig() *Config {
 		DisplayLines:             8,
 		ShowBorder:               true,
 		ForceBasicColor:          false,
+		AutoPageIntervalMs:       3500,
 		ReadingContentWidthRatio: 0.75,
 		ReadingMarginLeft:        2,
 		ReadingMarginRight:       0,
@@ -154,8 +157,12 @@ func sanitizeConfig(cfg *Config) {
 	if cfg.Theme == "" {
 		cfg.Theme = def.Theme
 	}
+	cfg.BossKeyCommand = strings.TrimSpace(cfg.BossKeyCommand)
 	if cfg.DisplayLines < 1 {
 		cfg.DisplayLines = def.DisplayLines
+	}
+	if cfg.AutoPageIntervalMs < 100 {
+		cfg.AutoPageIntervalMs = def.AutoPageIntervalMs
 	}
 	if cfg.ReadingContentWidthRatio <= 0 || cfg.ReadingContentWidthRatio > 1 {
 		cfg.ReadingContentWidthRatio = def.ReadingContentWidthRatio
