@@ -229,7 +229,7 @@ readcli -n 8 /path/to/book.epub
 
 配置后，按 `b` 会临时退出 ReadCLI 的界面，在当前终端里执行这条命令；退出该命令后，会自动回到 ReadCLI。
 
-主意: 执行命令的前提是你本地已经安装并可运行此命令
+注意: 执行命令的前提是你本地已经安装并可运行此命令
 
 推荐安装：[svenstaro/genact](https://github.com/svenstaro/genact)
 
