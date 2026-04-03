@@ -86,7 +86,7 @@ func Run(initialFile string, requestedLines int, version string) {
 		return x, y, width, height
 	})
 
-	tApp = tview.NewApplication().SetRoot(root, true).EnableMouse(false)
+	tApp = tview.NewApplication().SetRoot(root, true).EnableMouse(true)
 	tApp.SetMouseCapture(func(event *tcell.EventMouse, action tview.MouseAction) (*tcell.EventMouse, tview.MouseAction) {
 		return nil, 0
 	})

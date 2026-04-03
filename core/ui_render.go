@@ -535,8 +535,5 @@ func initWidgets() {
 		tv.SetBorder(true)
 		tv.SetBackgroundColor(tcell.ColorDefault)
 		tv.SetScrollable(false)
-		tv.SetMouseCapture(func(action tview.MouseAction, event *tcell.EventMouse) (tview.MouseAction, *tcell.EventMouse) {
-			return 0, nil
-		})
 	}
 }
