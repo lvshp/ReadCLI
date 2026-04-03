@@ -969,7 +969,7 @@ func handleUpdateMessage(message updateMessage) {
 	case updateFailed:
 		app.mode = app.updateReturnMode
 		if message.Err != nil {
-			app.statusMessage = "更新失败: " + shorten(message.Err.Error(), 48)
+			app.statusMessage = "更新失败: " + shorten(message.Err.Error(), 96)
 		} else {
 			app.statusMessage = "更新失败"
 		}
@@ -1595,6 +1595,7 @@ func buildUpdatePromptPanel() string {
 		"",
 		fmt.Sprintf("当前版本：%s", emptyFallback(strings.TrimSpace(app.currentVersion), "未知")),
 		fmt.Sprintf("最新版本：%s", app.updateRelease.TagName),
+		fmt.Sprintf("当前二进制：%s", emptyFallback(shortenDisplay(lib.CurrentExecutablePath(), 56), "未知")),
 		"",
 		"是否现在下载并替换当前程序？",
 		"更新完成后退出，再重新启动即可生效。",
@@ -2034,6 +2035,9 @@ func buildBookmarksPanel() string {
 			prefix = "> "
 		}
 		lines = append(lines, fmt.Sprintf("%s%s | %s", prefix, shorten(mark.Chapter, 16), shorten(mark.Snippet, 36)))
+		if i < len(bookmarks)-1 {
+			lines = append(lines, "")
+		}
 	}
 	return strings.Join(lines, "\n")
 }

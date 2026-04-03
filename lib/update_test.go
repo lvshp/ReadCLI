@@ -1,6 +1,9 @@
 package lib
 
-import "testing"
+import (
+	"strings"
+	"testing"
+)
 
 func TestShouldOfferUpdate(t *testing.T) {
 	t.Parallel()
@@ -47,5 +50,18 @@ func TestSelectReleaseAsset(t *testing.T) {
 
 	if missing := SelectReleaseAsset(release, "linux", "arm64"); missing != nil {
 		t.Fatalf("expected no asset, got %+v", missing)
+	}
+}
+
+func TestUpdateInstallErrorIncludesTempDir(t *testing.T) {
+	t.Parallel()
+
+	err := (&UpdateInstallError{
+		Message: "覆盖当前二进制失败",
+		TempDir: "/tmp/readcli-update-123",
+	}).Error()
+
+	if !strings.Contains(err, "/tmp/readcli-update-123") {
+		t.Fatalf("error string does not include temp dir: %q", err)
 	}
 }

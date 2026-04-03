@@ -30,6 +30,21 @@ type ReleaseInfo struct {
 	Assets  []ReleaseAsset `json:"assets"`
 }
 
+type UpdateInstallError struct {
+	Message string
+	TempDir string
+}
+
+func (e *UpdateInstallError) Error() string {
+	if e == nil {
+		return ""
+	}
+	if strings.TrimSpace(e.TempDir) == "" {
+		return e.Message
+	}
+	return fmt.Sprintf("%s。临时文件保留在：%s", e.Message, e.TempDir)
+}
+
 func FetchLatestRelease(version string) (*ReleaseInfo, error) {
 	client := &http.Client{Timeout: 8 * time.Second}
 	req, err := http.NewRequest(http.MethodGet, "https://api.github.com/repos/"+readcliRepo+"/releases/latest", nil)
@@ -97,6 +112,17 @@ func SelectReleaseAsset(release *ReleaseInfo, goos, goarch string) *ReleaseAsset
 }
 
 func InstallLatestReleaseAsset(version, url, executablePath string) error {
+	tempDir, err := os.MkdirTemp("", "readcli-update-*")
+	if err != nil {
+		return err
+	}
+	cleanup := true
+	defer func() {
+		if cleanup {
+			_ = os.RemoveAll(tempDir)
+		}
+	}()
+
 	client := &http.Client{Timeout: 90 * time.Second}
 	req, err := http.NewRequest(http.MethodGet, url, nil)
 	if err != nil {
@@ -115,31 +141,81 @@ func InstallLatestReleaseAsset(version, url, executablePath string) error {
 	}
 
 	execDir := filepath.Dir(executablePath)
-	tempFile, err := os.CreateTemp(execDir, "readcli-update-*")
+	archivePath := filepath.Join(tempDir, "readcli-update.tar.gz")
+	archiveFile, err := os.Create(archivePath)
 	if err != nil {
 		return err
 	}
-	tempPath := tempFile.Name()
-	defer func() {
-		tempFile.Close()
-		_ = os.Remove(tempPath)
-	}()
+	if _, err := io.Copy(archiveFile, resp.Body); err != nil {
+		archiveFile.Close()
+		cleanup = false
+		return &UpdateInstallError{Message: "写入更新包失败: " + err.Error(), TempDir: tempDir}
+	}
+	if err := archiveFile.Close(); err != nil {
+		cleanup = false
+		return &UpdateInstallError{Message: "保存更新包失败: " + err.Error(), TempDir: tempDir}
+	}
 
 	info, statErr := os.Stat(executablePath)
 	fileMode := os.FileMode(0755)
 	if statErr == nil {
 		fileMode = info.Mode()
 	}
-	if err := extractBinaryFromTarGz(resp.Body, tempFile); err != nil {
-		return err
+	binaryPath := filepath.Join(tempDir, "readcli")
+	binaryFile, err := os.Create(binaryPath)
+	if err != nil {
+		cleanup = false
+		return &UpdateInstallError{Message: "创建临时二进制失败: " + err.Error(), TempDir: tempDir}
 	}
-	if err := tempFile.Chmod(fileMode); err != nil {
-		return err
+	archiveReader, err := os.Open(archivePath)
+	if err != nil {
+		binaryFile.Close()
+		cleanup = false
+		return &UpdateInstallError{Message: "打开更新包失败: " + err.Error(), TempDir: tempDir}
 	}
-	if err := tempFile.Close(); err != nil {
-		return err
+	if err := extractBinaryFromTarGz(archiveReader, binaryFile); err != nil {
+		archiveReader.Close()
+		binaryFile.Close()
+		cleanup = false
+		return &UpdateInstallError{Message: err.Error(), TempDir: tempDir}
 	}
-	return os.Rename(tempPath, executablePath)
+	archiveReader.Close()
+	if err := binaryFile.Chmod(fileMode); err != nil {
+		binaryFile.Close()
+		cleanup = false
+		return &UpdateInstallError{Message: "设置更新文件权限失败: " + err.Error(), TempDir: tempDir}
+	}
+	if err := binaryFile.Close(); err != nil {
+		cleanup = false
+		return &UpdateInstallError{Message: "关闭更新文件失败: " + err.Error(), TempDir: tempDir}
+	}
+
+	if probe, err := os.CreateTemp(execDir, "readcli-write-test-*"); err != nil {
+		cleanup = false
+		return &UpdateInstallError{Message: "当前二进制目录不可写，无法自动覆盖", TempDir: tempDir}
+	} else {
+		probePath := probe.Name()
+		probe.Close()
+		_ = os.Remove(probePath)
+	}
+
+	if err := os.Rename(binaryPath, executablePath); err != nil {
+		cleanup = false
+		return &UpdateInstallError{Message: "覆盖当前二进制失败: " + err.Error(), TempDir: tempDir}
+	}
+	return nil
+}
+
+func CurrentExecutablePath() string {
+	path, err := os.Executable()
+	if err != nil {
+		return ""
+	}
+	abs, err := filepath.Abs(path)
+	if err != nil {
+		return path
+	}
+	return abs
 }
 
 func CurrentPlatformSupported() bool {

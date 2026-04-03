@@ -4,9 +4,9 @@ import "fmt"
 
 var (
 	// Logo
-	Logo = `
+Logo = `
 ReadCLI V%s
-https://github.com/lvshp/glance
+https://github.com/lvshp/ReadCLI
 `
 )
 
