@@ -278,7 +278,7 @@ func extractBinaryFromTarGz(source io.Reader, target io.Writer) error {
 
 func extractBinaryFromZip(source io.Reader, target io.Writer) error {
 	reader, ok := source.(io.ReaderAt)
-	size := int64(0)
+	var size int64
 	if !ok {
 		data, err := io.ReadAll(source)
 		if err != nil {
@@ -286,8 +286,11 @@ func extractBinaryFromZip(source io.Reader, target io.Writer) error {
 		}
 		reader = bytes.NewReader(data)
 		size = int64(len(data))
-	} else {
-		size = 1 << 30
+	} else if seeker, seekOk := source.(io.Seeker); seekOk {
+		current, _ := seeker.Seek(0, io.SeekCurrent)
+		end, _ := seeker.Seek(0, io.SeekEnd)
+		seeker.Seek(current, io.SeekStart)
+		size = end - current
 	}
 	zipReader, err := zip.NewReader(reader, size)
 	if err != nil {
