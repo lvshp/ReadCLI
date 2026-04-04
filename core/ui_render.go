@@ -322,11 +322,16 @@ func runConfiguredBossProgram() bool {
 
 	result := make(chan error, 1)
 	tApp.Suspend(func() {
-		shell := strings.TrimSpace(os.Getenv("SHELL"))
-		if shell == "" {
-			shell = "/bin/sh"
+		var cmd *exec.Cmd
+		if runtime.GOOS == "windows" {
+			cmd = exec.Command("cmd.exe", "/c", command)
+		} else {
+			shell := strings.TrimSpace(os.Getenv("SHELL"))
+			if shell == "" {
+				shell = "/bin/sh"
+			}
+			cmd = exec.Command(shell, "-lc", command)
 		}
-		cmd := exec.Command(shell, "-lc", command)
 		cmd.Stdin = os.Stdin
 		cmd.Stdout = os.Stdout
 		cmd.Stderr = os.Stderr
