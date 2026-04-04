@@ -320,12 +320,7 @@ func runConfiguredBossProgram() bool {
 
 	result := make(chan error, 1)
 	tApp.Suspend(func() {
-		cmd := buildBossCommand(command)
-		cmd.Stdin = os.Stdin
-		cmd.Stdout = os.Stdout
-		cmd.Stderr = os.Stderr
-		err := cmd.Run()
-		result <- err
+		result <- runBossCommand(command)
 	})
 
 	err := <-result
