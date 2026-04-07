@@ -16,3 +16,4 @@ cmd/glance
 cmd/*.tar.gz
 dist/
 *.tar.gz
+.playwright-mcp/

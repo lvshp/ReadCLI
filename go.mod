@@ -1,4 +1,4 @@
-module github.com/TimothyYe/glance
+module github.com/lvshp/ReadCLI
 
 go 1.24.0
 

@@ -6,7 +6,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/TimothyYe/glance/lib"
+	"github.com/lvshp/ReadCLI/lib"
 )
 
 func moveShelf(delta int) {

@@ -4,7 +4,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/TimothyYe/glance/lib"
+	"github.com/lvshp/ReadCLI/lib"
 )
 
 func TestReadingVisibleSourceLinesUsesDisplayLinesDirectly(t *testing.T) {

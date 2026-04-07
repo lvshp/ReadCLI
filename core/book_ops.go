@@ -7,8 +7,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/TimothyYe/glance/lib"
-	"github.com/TimothyYe/glance/reader"
+	"github.com/lvshp/ReadCLI/lib"
+	"github.com/lvshp/ReadCLI/reader"
 )
 
 func openBook(path string) error {

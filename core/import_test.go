@@ -6,7 +6,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/TimothyYe/glance/lib"
+	"github.com/lvshp/ReadCLI/lib"
 )
 
 func TestImportBooksFromDirectory(t *testing.T) {

@@ -5,8 +5,8 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/TimothyYe/glance/core"
-	"github.com/TimothyYe/glance/lib"
+	"github.com/lvshp/ReadCLI/core"
+	"github.com/lvshp/ReadCLI/lib"
 )
 
 var Version string

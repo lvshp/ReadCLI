@@ -4,8 +4,8 @@ import (
 	"regexp"
 	"time"
 
-	"github.com/TimothyYe/glance/lib"
-	"github.com/TimothyYe/glance/reader"
+	"github.com/lvshp/ReadCLI/lib"
+	"github.com/lvshp/ReadCLI/reader"
 	tcell "github.com/gdamore/tcell/v2"
 	"github.com/rivo/tview"
 )

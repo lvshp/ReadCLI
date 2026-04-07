@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/TimothyYe/glance/lib"
+	"github.com/lvshp/ReadCLI/lib"
 )
 
 func switchTheme() {

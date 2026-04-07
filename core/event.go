@@ -3,7 +3,7 @@ package core
 import (
 	"strings"
 
-	"github.com/TimothyYe/glance/lib"
+	"github.com/lvshp/ReadCLI/lib"
 )
 
 func handleHomeEvent(id string) {

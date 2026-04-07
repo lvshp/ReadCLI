@@ -7,7 +7,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/TimothyYe/glance/lib"
+	"github.com/lvshp/ReadCLI/lib"
 	"github.com/gdamore/tcell/v2"
 	"github.com/mattn/go-runewidth"
 )
