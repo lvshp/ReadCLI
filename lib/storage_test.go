@@ -14,6 +14,7 @@ func TestConfigRoundTrip(t *testing.T) {
 		Theme:                    "jetbrains",
 		DisplayLines:             12,
 		ShowBorder:               false,
+		CompactMode:              true,
 		SkippedUpdateVersion:     "v0.1.9",
 		BossKeyCommand:           "  /usr/local/bin/genact --stdin  ",
 		ForceBasicColor:          true,
@@ -35,6 +36,9 @@ func TestConfigRoundTrip(t *testing.T) {
 	}
 	if loaded.Theme != "jetbrains" || loaded.DisplayLines != 12 || loaded.ShowBorder {
 		t.Fatalf("unexpected config: %#v", loaded)
+	}
+	if !loaded.CompactMode {
+		t.Fatalf("CompactMode = false, want true")
 	}
 	if loaded.SkippedUpdateVersion != "v0.1.9" {
 		t.Fatalf("SkippedUpdateVersion = %q, want v0.1.9", loaded.SkippedUpdateVersion)

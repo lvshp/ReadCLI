@@ -12,19 +12,31 @@ func switchTheme() {
 	for i, name := range app.themeOrder {
 		if name == current {
 			app.config.Theme = app.themeOrder[(i+1)%len(app.themeOrder)]
-			_ = lib.SaveConfig(app.config)
+			saveConfig("保存配置")
 			app.statusMessage = "主题已切换为 " + app.config.Theme
 			return
 		}
 	}
 	app.config.Theme = app.themeOrder[0]
-	_ = lib.SaveConfig(app.config)
+	saveConfig("保存配置")
 }
 
 func toggleBorder() {
 	app.showBorder = !app.showBorder
 	app.config.ShowBorder = app.showBorder
-	_ = lib.SaveConfig(app.config)
+	saveConfig("保存配置")
+}
+
+func toggleCompactMode() {
+	app.compactMode = !app.compactMode
+	app.config.CompactMode = app.compactMode
+	saveConfig("保存配置")
+	if app.compactMode {
+		app.statusMessage = "已切换为精简阅读界面"
+	} else {
+		app.statusMessage = "已切换为全信息阅读界面"
+	}
+	applyLayoutFromAppWithoutReflow()
 }
 
 func toggleTimer() {
@@ -56,13 +68,18 @@ func refreshTimerTicker() {
 	app.ticker = ticker
 	go func(local *time.Ticker) {
 		for range local.C {
-			if app.ticker != local || !app.timer {
+			if tApp == nil {
 				return
 			}
-			if app.mode == modeReading && app.reader != nil {
-				moveReading(pageStep())
-				queueRedraw()
-			}
+			queueUIUpdate(func() {
+				if app.ticker != local || !app.timer {
+					return
+				}
+				if app.mode == modeReading && app.reader != nil {
+					moveReading(pageStep())
+					refreshChrome()
+				}
+			})
 		}
 	}(ticker)
 }
@@ -114,7 +131,7 @@ func adjustReadingSetting(delta int) {
 	case 6:
 		app.config.AutoPageIntervalMs = max(500, app.config.AutoPageIntervalMs+delta*500)
 	}
-	_ = lib.SaveConfig(app.config)
+	saveConfig("保存配置")
 	refreshTimerTicker()
 	if app.reader != nil {
 		applyLayoutFromApp()
@@ -133,11 +150,11 @@ func activateReadingSetting() {
 		app.inputCursor = len([]rune(app.inputValue))
 	case 8:
 		app.config.ReadingHighContrast = !app.config.ReadingHighContrast
-		_ = lib.SaveConfig(app.config)
+		saveConfig("保存配置")
 		app.statusMessage = "高对比已切换"
 	case 9:
 		app.config.ForceBasicColor = !app.config.ForceBasicColor
-		_ = lib.SaveConfig(app.config)
+		saveConfig("保存配置")
 		if app.config.ForceBasicColor {
 			app.statusMessage = "已切换为基础色模式"
 		} else {
@@ -155,7 +172,7 @@ func applyReadingTextColorInput() {
 	app.config.ReadingTextColor = value
 	app.mode = modeReadingSettings
 	resetInputState()
-	_ = lib.SaveConfig(app.config)
+	saveConfig("保存配置")
 	app.statusMessage = "字体颜色已更新"
 }
 
@@ -173,7 +190,7 @@ func cycleReadingColorPreset() {
 		}
 	}
 	app.config.ReadingTextColor = palette[(index+1+len(palette))%len(palette)]
-	_ = lib.SaveConfig(app.config)
+	saveConfig("保存配置")
 	app.statusMessage = "字体颜色已切换为 " + app.config.ReadingTextColor
 }
 
@@ -183,7 +200,7 @@ func setDisplayLines(lines int) {
 	}
 	app.displayLines = lines
 	app.config.DisplayLines = lines
-	_ = lib.SaveConfig(app.config)
+	saveConfig("保存配置")
 	visible := readingVisibleSourceLines()
 	if visible < app.displayLines {
 		app.statusMessage = fmt.Sprintf("每页正文 %d 行（当前窗口最多显示 %d 行）", app.displayLines, visible)
@@ -211,11 +228,19 @@ func persistState() {
 	if app == nil {
 		return
 	}
+	if app.ticker != nil {
+		app.ticker.Stop()
+		app.ticker = nil
+	}
+	if app.reader != nil && app.currentFile != "" {
+		syncCurrentBookState()
+	}
 	app.config.DisplayLines = app.displayLines
 	app.config.ShowBorder = app.showBorder
+	app.config.CompactMode = app.compactMode
 	app.config.SelectedBookshelf = app.shelfIndex
-	_ = lib.SaveConfig(app.config)
-	_ = lib.SaveBookshelf(app.bookshelf)
-	_ = lib.SaveBookmarks(app.bookmarks)
-	_ = lib.SaveProgress(app.progress)
+	saveConfig("保存配置")
+	saveBookshelf("保存书架")
+	saveBookmarks("保存书签")
+	saveProgress("保存进度")
 }

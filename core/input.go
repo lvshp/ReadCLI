@@ -323,7 +323,11 @@ func toggleImportRecursive() {
 }
 
 func importModeLabel() string {
-	if app.importRecursive {
+	return importModeLabelFor(app.importRecursive)
+}
+
+func importModeLabelFor(recursive bool) string {
+	if recursive {
 		return "递归"
 	}
 	return "当前层"

@@ -64,7 +64,7 @@ func deleteSelectedBookmark() {
 	list := append([]lib.Bookmark(nil), bookmarks[:app.bookmarkIndex]...)
 	list = append(list, bookmarks[app.bookmarkIndex+1:]...)
 	app.bookmarks.Books[app.currentFile] = list
-	_ = lib.SaveBookmarks(app.bookmarks)
+	saveBookmarks("保存书签")
 	if app.bookmarkIndex >= len(list) && len(list) > 0 {
 		app.bookmarkIndex = len(list) - 1
 	}
@@ -180,7 +180,7 @@ func saveBookmark() {
 	}
 	list = append(list, mark)
 	app.bookmarks.Books[app.currentFile] = list
-	_ = lib.SaveBookmarks(app.bookmarks)
+	saveBookmarks("保存书签")
 	app.statusMessage = "书签已保存"
 }
 

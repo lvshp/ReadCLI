@@ -4,9 +4,9 @@ import (
 	"regexp"
 	"time"
 
+	tcell "github.com/gdamore/tcell/v2"
 	"github.com/lvshp/ReadCLI/lib"
 	"github.com/lvshp/ReadCLI/reader"
-	tcell "github.com/gdamore/tcell/v2"
 	"github.com/rivo/tview"
 )
 
@@ -94,6 +94,7 @@ type appState struct {
 	showBorder    bool
 	showProgress  bool
 	showHelp      bool
+	compactMode   bool
 	bossKey       bool
 	displayLines  int
 	color         int
@@ -116,19 +117,21 @@ type appState struct {
 }
 
 type cachedReader struct {
-	reader reader.Reader
+	reader  reader.Reader
+	size    int64
+	modTime time.Time
 }
 
 var (
-	app     *appState
-	tApp    *tview.Application
-	root    *tview.Flex
-	midRow  *tview.Flex
-	header  *tview.TextView
-	left    *tview.TextView
-	main    *tview.TextView
-	right   *tview.TextView
-	footer  *tview.TextView
+	app    *appState
+	tApp   *tview.Application
+	root   *tview.Flex
+	midRow *tview.Flex
+	header *tview.TextView
+	left   *tview.TextView
+	main   *tview.TextView
+	right  *tview.TextView
+	footer *tview.TextView
 
 	mainContentWidth  int
 	mainContentHeight int

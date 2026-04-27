@@ -52,14 +52,16 @@ func TestImportBooksFromDirectory(t *testing.T) {
 		t.Fatalf("write nested txt: %v", err)
 	}
 
-	app = &appState{bookshelf: &lib.BookshelfStore{}}
-
-	imported, err := importBooksFromDirectory(tempDir, false)
+	books, err := importBooksFromDirectory(tempDir, false, nil)
 	if err != nil {
 		t.Fatalf("importBooksFromDirectory() error = %v", err)
 	}
-	if imported != 2 {
-		t.Fatalf("imported = %d, want 2", imported)
+	if len(books) != 2 {
+		t.Fatalf("len(books) = %d, want 2", len(books))
+	}
+	app = &appState{bookshelf: &lib.BookshelfStore{}}
+	for _, book := range books {
+		lib.UpsertBookshelfBook(app.bookshelf, book)
 	}
 	if got := len(app.bookshelf.Books); got != 2 {
 		t.Fatalf("bookshelf len = %d, want 2", got)
@@ -83,14 +85,16 @@ func TestImportBooksFromDirectoryRecursive(t *testing.T) {
 		t.Fatalf("write nested txt: %v", err)
 	}
 
-	app = &appState{bookshelf: &lib.BookshelfStore{}}
-
-	imported, err := importBooksFromDirectory(tempDir, true)
+	books, err := importBooksFromDirectory(tempDir, true, nil)
 	if err != nil {
 		t.Fatalf("importBooksFromDirectory() error = %v", err)
 	}
-	if imported != 2 {
-		t.Fatalf("imported = %d, want 2", imported)
+	if len(books) != 2 {
+		t.Fatalf("len(books) = %d, want 2", len(books))
+	}
+	app = &appState{bookshelf: &lib.BookshelfStore{}}
+	for _, book := range books {
+		lib.UpsertBookshelfBook(app.bookshelf, book)
 	}
 	if got := len(app.bookshelf.Books); got != 2 {
 		t.Fatalf("bookshelf len = %d, want 2", got)

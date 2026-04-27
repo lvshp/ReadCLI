@@ -49,6 +49,8 @@ func handleReadingEvent(id string) {
 		displayTOC()
 	case "f":
 		toggleBorder()
+	case "z":
+		toggleCompactMode()
 	case "b":
 		displayBossKey()
 	case "<C-n>", "j", "<Space>", "<Enter>", "<Down>":
@@ -230,7 +232,7 @@ func handleUpdatePromptEvent(id string) {
 	case "n", "q", "<Escape>":
 		if !app.updatePromptManual && app.updateRelease != nil && app.config != nil {
 			app.config.SkippedUpdateVersion = strings.TrimSpace(app.updateRelease.TagName)
-			_ = lib.SaveConfig(app.config)
+			saveConfig("保存配置")
 		}
 		app.mode = app.updateReturnMode
 		if app.updatePromptManual {

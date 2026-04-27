@@ -14,6 +14,7 @@ type Config struct {
 	Theme                    string  `json:"theme"`
 	DisplayLines             int     `json:"display_lines"`
 	ShowBorder               bool    `json:"show_border"`
+	CompactMode              bool    `json:"compact_mode"`
 	SelectedBookshelf        int     `json:"selected_bookshelf"`
 	SkippedUpdateVersion     string  `json:"skipped_update_version"`
 	BossKeyCommand           string  `json:"boss_key_command"`
@@ -139,6 +140,7 @@ func defaultConfig() *Config {
 		Theme:                    "vscode",
 		DisplayLines:             8,
 		ShowBorder:               true,
+		CompactMode:              false,
 		BossKeyCommand:           "",
 		ForceBasicColor:          false,
 		AutoPageIntervalMs:       3500,

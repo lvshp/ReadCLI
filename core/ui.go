@@ -5,8 +5,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/lvshp/ReadCLI/lib"
 	"github.com/gdamore/tcell/v2"
+	"github.com/lvshp/ReadCLI/lib"
 	"github.com/rivo/tview"
 )
 
@@ -44,6 +44,7 @@ func Run(initialFile string, requestedLines int, version string) {
 		lastSearchIndex: -1,
 		sessionStart:    time.Now(),
 		showBorder:      cfg.ShowBorder,
+		compactMode:     cfg.CompactMode,
 		displayLines:    cfg.DisplayLines,
 		currentVersion:  strings.TrimSpace(version),
 		updateMessages:  make(chan updateMessage, 2),
@@ -148,14 +149,16 @@ func Run(initialFile string, requestedLines int, version string) {
 	// Start a goroutine to handle update messages
 	go func() {
 		for msg := range app.updateMessages {
-			tApp.QueueUpdateDraw(func() {
+			queueUIUpdate(func() {
 				handleUpdateMessage(msg)
 				refreshChrome()
 			})
 		}
 	}()
 
-	if err := tApp.Run(); err != nil {
+	err := tApp.Run()
+	persistState()
+	if err != nil {
 		log.Fatalf("failed to start application: %v", err)
 	}
 }
