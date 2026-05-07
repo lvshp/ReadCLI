@@ -10,6 +10,8 @@ func handleHomeEvent(id string) {
 	switch id {
 	case "q", "<C-c>":
 		app.quit = true
+	case "<Escape>":
+		cancelBookshelfSearch()
 	case "j", "<C-n>", "<Down>":
 		moveShelf(1)
 	case "k", "<C-p>", "<Up>":
@@ -18,6 +20,8 @@ func handleHomeEvent(id string) {
 		openSelectedBook()
 	case "i":
 		setMode(modeImportInput)
+	case "/":
+		startBookshelfSearch()
 	case "o":
 		cycleSort()
 	case "r":
@@ -40,9 +44,10 @@ func handleReadingEvent(id string) {
 	case "q", "<C-c>":
 		syncCurrentBookState()
 		app.mode = modeHome
+		app.showReadingQuickHelp = false
 		app.statusMessage = "已回到书架"
 	case "?":
-		displayHelp()
+		displayReadingQuickHelp()
 	case "p":
 		displayProgress()
 	case "m":
@@ -91,6 +96,8 @@ func handleReadingEvent(id string) {
 		toggleTimer()
 	case "/":
 		setMode(modeSearchInput)
+	case "g":
+		startReadingJumpInput()
 	case ",":
 		openReadingSettings()
 	case "u":
@@ -165,6 +172,14 @@ func handleTextInputEvent(id string, onEnter func()) {
 	case "<Escape>":
 		if app.mode == modeReadingColorInput {
 			app.mode = modeReadingSettings
+		} else if app.mode == modeBookshelfSearchInput {
+			app.bookshelfQuery = ""
+			app.shelfIndex = 0
+			app.mode = modeHome
+			app.statusMessage = "书架搜索已取消"
+		} else if app.mode == modeReadingJumpInput {
+			app.mode = modeReading
+			app.statusMessage = "已取消跳转"
 		} else if app.currentFile != "" {
 			app.mode = modeReading
 		} else {

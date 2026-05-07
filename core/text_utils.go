@@ -7,8 +7,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/lvshp/ReadCLI/lib"
 	"github.com/gdamore/tcell/v2"
+	"github.com/lvshp/ReadCLI/lib"
 	"github.com/mattn/go-runewidth"
 )
 
@@ -266,8 +266,25 @@ func stripKnownTitleNoise(title string) string {
 
 func visibleBooks() []lib.BookshelfBook {
 	books := lib.FilterBooks(app.bookshelf.Books, app.filterMode)
+	if query := strings.TrimSpace(app.bookshelfQuery); query != "" {
+		books = filterBooksByTitle(books, query)
+	}
 	lib.SortBooks(books, app.sortMode)
 	return books
+}
+
+func filterBooksByTitle(books []lib.BookshelfBook, query string) []lib.BookshelfBook {
+	query = strings.ToLower(strings.TrimSpace(query))
+	if query == "" {
+		return books
+	}
+	filtered := make([]lib.BookshelfBook, 0, len(books))
+	for _, book := range books {
+		if strings.Contains(strings.ToLower(book.Title), query) {
+			filtered = append(filtered, book)
+		}
+	}
+	return filtered
 }
 
 func selectedBook() *lib.BookshelfBook {

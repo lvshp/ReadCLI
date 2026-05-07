@@ -2,6 +2,7 @@ package core
 
 import (
 	"fmt"
+	"math"
 	"strconv"
 	"strings"
 	"time"
@@ -74,6 +75,13 @@ func deleteSelectedBookmark() {
 func displayHelp() {
 	app.showHelp = !app.showHelp
 	app.showProgress = false
+	app.showReadingQuickHelp = false
+}
+
+func displayReadingQuickHelp() {
+	app.showReadingQuickHelp = !app.showReadingQuickHelp
+	app.showHelp = false
+	app.showProgress = false
 }
 
 func displayProgress() {
@@ -91,6 +99,7 @@ func displayTOC() {
 		return
 	}
 	app.mode = modeTOC
+	app.showReadingQuickHelp = false
 	app.tocIndex = app.reader.CurrentChapterIndex()
 	app.tocNumber = ""
 }
@@ -215,6 +224,84 @@ func runSearch() {
 	syncCurrentBookState()
 }
 
+func startBookshelfSearch() {
+	setMode(modeBookshelfSearchInput)
+	app.inputValue = app.bookshelfQuery
+	app.inputCursor = len([]rune(app.inputValue))
+	app.statusMessage = "输入书名关键字过滤书架"
+}
+
+func runBookshelfSearch() {
+	app.bookshelfQuery = strings.TrimSpace(app.inputValue)
+	resetInputState()
+	app.mode = modeHome
+	app.shelfIndex = 0
+	if app.bookshelfQuery == "" {
+		app.statusMessage = "书架搜索已清空"
+		return
+	}
+	app.statusMessage = "书架搜索: " + app.bookshelfQuery
+}
+
+func cancelBookshelfSearch() {
+	if strings.TrimSpace(app.bookshelfQuery) == "" {
+		return
+	}
+	app.bookshelfQuery = ""
+	app.shelfIndex = 0
+	app.statusMessage = "书架搜索已清空"
+}
+
+func startReadingJumpInput() {
+	if app.reader == nil {
+		return
+	}
+	setMode(modeReadingJumpInput)
+	app.statusMessage = "输入章节号或百分比，例如 128 / 50%"
+}
+
+func runReadingJump() {
+	if app.reader == nil {
+		return
+	}
+	target := strings.TrimSpace(app.inputValue)
+	resetInputState()
+	app.mode = modeReading
+	if target == "" {
+		app.statusMessage = "跳转已取消"
+		return
+	}
+
+	if strings.HasSuffix(target, "%") {
+		value := strings.TrimSpace(strings.TrimSuffix(target, "%"))
+		percent, err := strconv.ParseFloat(value, 64)
+		if err != nil || percent < 0 || percent > 100 {
+			app.statusMessage = "百分比需在 0% 到 100% 之间"
+			return
+		}
+		total := app.reader.Total()
+		pos := 0
+		if total > 1 {
+			pos = int(math.Round(percent / 100 * float64(total-1)))
+		}
+		app.reader.Goto(pos)
+		app.showReadingQuickHelp = false
+		app.statusMessage = fmt.Sprintf("已跳转到 %.0f%%", percent)
+		syncCurrentBookState()
+		return
+	}
+
+	chapter, err := strconv.Atoi(target)
+	if err != nil || chapter <= 0 {
+		app.statusMessage = "请输入章节号或百分比，例如 128 / 50%"
+		return
+	}
+	app.reader.GotoChapter(chapter - 1)
+	app.showReadingQuickHelp = false
+	app.statusMessage = fmt.Sprintf("已跳转到第 %d 章", chapter)
+	syncCurrentBookState()
+}
+
 func jumpSearch(forward bool) {
 	if app.reader == nil || strings.TrimSpace(app.searchQuery) == "" {
 		app.statusMessage = "没有可继续跳转的搜索结果"
@@ -258,6 +345,9 @@ func setMode(m mode) {
 	app.mode = m
 	resetInputState()
 	app.rowNumber = ""
+	if m != modeReading {
+		app.showReadingQuickHelp = false
+	}
 }
 
 func cycleSort() {

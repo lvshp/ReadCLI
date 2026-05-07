@@ -68,8 +68,13 @@ func applyLayoutWithReflow(termWidth, termHeight int, reflow bool) {
 		contentHeight = 1
 	}
 
-	mainContentWidth = mainWidth - 2
-	mainContentHeight = contentHeight - 2
+	if compact {
+		mainContentWidth = mainWidth
+		mainContentHeight = contentHeight
+	} else {
+		mainContentWidth = mainWidth - 2
+		mainContentHeight = contentHeight - 2
+	}
 
 	nextContentWidth := readingContentWidth(mainWidth)
 	if reflow {

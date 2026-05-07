@@ -25,7 +25,7 @@ func buildBookshelfPanel() string {
 		)
 		return strings.Join(lines, "\n")
 	}
-	if len(books) == 0 {
+	if len(books) == 0 && strings.TrimSpace(app.bookshelfQuery) == "" {
 		lines = append(lines,
 			"还没有导入任何书。",
 			"",
@@ -40,6 +40,16 @@ func buildBookshelfPanel() string {
 		)
 		return strings.Join(lines, "\n")
 	}
+	if len(books) == 0 {
+		lines = append(lines,
+			"没有匹配的书。",
+			"",
+			"当前搜索："+app.bookshelfQuery,
+			"",
+			"按 / 重新搜索，或按 Esc 清空搜索。",
+		)
+		return strings.Join(lines, "\n")
+	}
 
 	pageSize := bookshelfPageSize()
 	start := (app.shelfIndex / pageSize) * pageSize
@@ -47,7 +57,11 @@ func buildBookshelfPanel() string {
 	if end > len(books) {
 		end = len(books)
 	}
-	lines = append(lines, fmt.Sprintf("共 %d 本  |  排序 %s  |  过滤 %s  |  第 %d/%d 页", len(books), readableSort(app.sortMode), readableFilter(app.filterMode), start/pageSize+1, (len(books)+pageSize-1)/pageSize))
+	summary := fmt.Sprintf("共 %d 本  |  排序 %s  |  过滤 %s  |  第 %d/%d 页", len(books), readableSort(app.sortMode), readableFilter(app.filterMode), start/pageSize+1, (len(books)+pageSize-1)/pageSize)
+	if strings.TrimSpace(app.bookshelfQuery) != "" {
+		summary += "  |  搜索 " + app.bookshelfQuery
+	}
+	lines = append(lines, summary)
 	lines = append(lines, bookshelfStatsLine(books))
 	lines = append(lines, "")
 	titleWidth := bookshelfTitleWidth()

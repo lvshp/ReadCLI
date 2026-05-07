@@ -98,6 +98,8 @@ func Run(initialFile string, requestedLines int, version string) {
 			return nil
 		}
 
+		wasCompact := compactReadingUI()
+
 		switch app.mode {
 		case modeHome:
 			handleHomeEvent(id)
@@ -109,6 +111,10 @@ func Run(initialFile string, requestedLines int, version string) {
 			handleBookmarkEvent(id)
 		case modeSearchInput:
 			handleTextInputEvent(id, runSearch)
+		case modeBookshelfSearchInput:
+			handleTextInputEvent(id, runBookshelfSearch)
+		case modeReadingJumpInput:
+			handleTextInputEvent(id, runReadingJump)
 		case modeImportInput:
 			handleTextInputEvent(id, importBook)
 		case modeReadingSettings:
@@ -129,6 +135,11 @@ func Run(initialFile string, requestedLines int, version string) {
 
 		if app.quit {
 			tApp.Stop()
+			return nil
+		}
+
+		if wasCompact != compactReadingUI() {
+			applyLayoutFromAppWithoutReflow()
 			return nil
 		}
 

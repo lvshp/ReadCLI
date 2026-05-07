@@ -13,18 +13,20 @@ import (
 type mode string
 
 const (
-	modeHome              mode = "home"
-	modeReading           mode = "reading"
-	modeTOC               mode = "toc"
-	modeBookmarks         mode = "bookmarks"
-	modeSearchInput       mode = "search_input"
-	modeImportInput       mode = "import_input"
-	modeReadingSettings   mode = "reading_settings"
-	modeReadingColorInput mode = "reading_color_input"
-	modeDeleteConfirm     mode = "delete_confirm"
-	modeUpdatePrompt      mode = "update_prompt"
-	modeUpdating          mode = "updating"
-	modeUpdateRestart     mode = "update_restart"
+	modeHome                 mode = "home"
+	modeReading              mode = "reading"
+	modeTOC                  mode = "toc"
+	modeBookmarks            mode = "bookmarks"
+	modeSearchInput          mode = "search_input"
+	modeBookshelfSearchInput mode = "bookshelf_search_input"
+	modeReadingJumpInput     mode = "reading_jump_input"
+	modeImportInput          mode = "import_input"
+	modeReadingSettings      mode = "reading_settings"
+	modeReadingColorInput    mode = "reading_color_input"
+	modeDeleteConfirm        mode = "delete_confirm"
+	modeUpdatePrompt         mode = "update_prompt"
+	modeUpdating             mode = "updating"
+	modeUpdateRestart        mode = "update_restart"
 )
 
 type updateMessageKind string
@@ -88,22 +90,27 @@ type appState struct {
 	inputHintIndex  int
 	importRecursive bool
 	searchQuery     string
+	bookshelfQuery  string
 	lastSearchIndex int
 
-	statusMessage string
-	sessionStart  time.Time
-	contentWidth  int
-	showBorder    bool
-	showProgress  bool
-	showHelp      bool
-	compactMode   bool
-	bossKey       bool
-	displayLines  int
-	color         int
-	timer         bool
-	ticker        *time.Ticker
-	rowNumber     string
-	settingsIndex int
+	statusMessage           string
+	lastStatusMessage       string
+	statusMessageUntil      time.Time
+	statusMessageGeneration int
+	sessionStart            time.Time
+	contentWidth            int
+	showBorder              bool
+	showProgress            bool
+	showHelp                bool
+	showReadingQuickHelp    bool
+	compactMode             bool
+	bossKey                 bool
+	displayLines            int
+	color                   int
+	timer                   bool
+	ticker                  *time.Ticker
+	rowNumber               string
+	settingsIndex           int
 
 	deleteTargetPath   string
 	deleteTargetTitle  string

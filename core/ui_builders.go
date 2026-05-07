@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"strings"
 	"time"
+
+	"github.com/mattn/go-runewidth"
 )
 
 func buildHeader(th theme) string {
@@ -53,13 +55,14 @@ func buildHeader(th theme) string {
 }
 
 func buildLeftPanel(th theme) string {
-	if app.mode == modeHome || app.mode == modeImportInput || app.mode == modeDeleteConfirm {
+	if app.mode == modeHome || app.mode == modeImportInput || app.mode == modeDeleteConfirm || app.mode == modeBookshelfSearchInput {
 		return strings.Join([]string{
 			"[Bookshelf](fg:cyan,mod:bold)",
 			"",
 			"[Actions](fg:yellow,mod:bold)",
 			"  Enter   打开书籍",
 			"  i       导入文件",
+			"  /       搜索书架",
 			"  o       排序视图",
 			"  r       过滤视图",
 			"  x       移出书架",
@@ -109,7 +112,7 @@ func buildLeftPanel(th theme) string {
 }
 
 func buildRightPanel(th theme) string {
-	if app.mode == modeHome || app.mode == modeImportInput || app.mode == modeDeleteConfirm {
+	if app.mode == modeHome || app.mode == modeImportInput || app.mode == modeDeleteConfirm || app.mode == modeBookshelfSearchInput {
 		book := selectedBook()
 		lines := []string{fmt.Sprintf("[%s](fg:cyan,mod:bold)", titleCase(th.RightName)), ""}
 		if book == nil {
@@ -189,15 +192,19 @@ func buildFooter() string {
 		tag, elapsed, app.config.Theme, version, app.statusMessage)
 	switch app.mode {
 	case modeHome:
-		return line1 + "\n[↑/↓](fg:cyan):选择  [→/Enter](fg:cyan):打开  [i](fg:cyan):导入  [o/r](fg:cyan):排序/过滤  [x](fg:cyan):移除  [T](fg:cyan):主题  [u](fg:cyan):更新  [q](fg:red):退出"
+		return line1 + "\n[↑/↓](fg:cyan):选择  [→/Enter](fg:cyan):打开  [/](fg:cyan):搜书架  [i](fg:cyan):导入  [o/r](fg:cyan):排序/过滤  [x](fg:cyan):移除  [T](fg:cyan):主题  [u](fg:cyan):更新  [q](fg:red):退出"
 	case modeReading:
-		return line1 + "\n[↑/↓](fg:cyan):翻页  [←/→](fg:cyan):切章  [+/-](fg:cyan):正文行数  [c](fg:cyan):颜色  [,](fg:cyan):阅读设置  [/](fg:cyan):搜索  [s/B](fg:cyan):书签  [m](fg:cyan):目录  [z](fg:cyan):精简/全信息  [T](fg:cyan):主题  [u](fg:cyan):更新  [q](fg:red):书架"
+		return line1 + "\n[↑/↓](fg:cyan):翻页  [←/→](fg:cyan):切章  [g](fg:cyan):跳转  [?](fg:cyan):快捷键  [+/-](fg:cyan):正文行数  [c](fg:cyan):颜色  [,](fg:cyan):设置  [/](fg:cyan):搜索  [s/B](fg:cyan):书签  [m](fg:cyan):目录  [z](fg:cyan):精简/全信息  [q](fg:red):书架"
 	case modeTOC:
 		return line1 + "\n[↑/↓](fg:cyan):移动  [→/Enter](fg:cyan):打开  [←/m](fg:cyan):返回  [0-9](fg:cyan):跳章  [q](fg:red):书架"
 	case modeBookmarks:
 		return line1 + "\n[↑/↓](fg:cyan):移动  [→/Enter](fg:cyan):打开  [d](fg:cyan):删除  [←/B/q](fg:red):关闭"
 	case modeSearchInput:
 		return line1 + "\n输入搜索关键字，支持左右移动，Enter 执行，Esc 取消"
+	case modeBookshelfSearchInput:
+		return line1 + "\n输入书名关键字过滤书架，Enter 应用，Esc 清空并取消"
+	case modeReadingJumpInput:
+		return line1 + "\n输入章节号或百分比，例如 128 / 50%，Enter 跳转，Esc 取消"
 	case modeImportInput:
 		scope := "当前层"
 		if app.importRecursive {
@@ -223,15 +230,23 @@ func buildFooter() string {
 
 func compactReadingStatusLine() string {
 	chapter := "未命名章节"
-	progress := "(0 / 0)"
+	percent := 0
+	current := 0
+	total := 0
 	if app != nil && app.reader != nil {
 		if current := strings.TrimSpace(app.reader.CurrentChapterTitle()); current != "" {
 			chapter = current
 		}
-		progress = app.reader.GetProgress()
+		total = app.reader.Total()
+		current = app.reader.CurrentPos() + 1
+		percent = progressPercent(app.reader.CurrentPos(), total)
 	}
 	width := max(20, mainContentWidth)
-	return fmt.Sprintf("[章节](fg:cyan) %s  [进度](fg:yellow) %s", shortenDisplay(chapter, max(8, width-24)), progress)
+	position := fmt.Sprintf("%d/%d", current, total)
+	status := fmt.Sprintf("%d%% · %s", percent, position)
+	statusWidth := runewidth.StringWidth("  ·  " + status)
+	chapter = shortenDisplay(chapter, max(8, width-statusWidth))
+	return fmt.Sprintf("[%s](fg:white,mod:dim)  [·](fg:cyan,mod:dim)  [%s](fg:yellow)  [%s](fg:white,mod:dim)", chapter, fmt.Sprintf("%d%%", percent), position)
 }
 
 func buildMainTitle() string {
@@ -246,6 +261,10 @@ func buildMainTitle() string {
 		return " reading settings "
 	case modeReadingColorInput:
 		return " reading color "
+	case modeBookshelfSearchInput:
+		return " bookshelf search "
+	case modeReadingJumpInput:
+		return " jump "
 	case modeUpdatePrompt, modeUpdating, modeUpdateRestart:
 		return " update "
 	default:
@@ -302,6 +321,10 @@ func buildMainPanel() string {
 		return buildBookmarksPanel()
 	case modeSearchInput:
 		return "搜索\n\n请输入关键字并回车执行：\n\n" + renderInputWithCursor(app.inputValue, app.inputCursor)
+	case modeBookshelfSearchInput:
+		return "书架搜索\n\n请输入书名关键字并回车过滤：\n\n" + renderInputWithCursor(app.inputValue, app.inputCursor) + "\n\nEsc 清空搜索并返回书架。"
+	case modeReadingJumpInput:
+		return "跳转\n\n输入章节号或百分比：\n\n" + renderInputWithCursor(app.inputValue, app.inputCursor) + "\n\n示例：128 或 50%。"
 	case modeReadingSettings:
 		return buildReadingSettingsPanel()
 	case modeReadingColorInput:
@@ -316,6 +339,32 @@ func buildMainPanel() string {
 		if app.reader == nil {
 			return "未打开书籍"
 		}
-		return formatReadingPanel(highlightSearchMatches(app.reader.CurrentView(readingVisibleSourceLines()), app.searchQuery))
+		return buildReadingPanel()
 	}
+}
+
+func buildReadingPanel() string {
+	text := app.reader.CurrentView(readingVisibleSourceLines())
+	if app.showReadingQuickHelp {
+		text = withReadingQuickHelp(text)
+	}
+	return formatReadingPanel(highlightSearchMatches(text, app.searchQuery))
+}
+
+func withReadingQuickHelp(text string) string {
+	lines := strings.Split(strings.TrimRight(text, "\n"), "\n")
+	help := []string{
+		"[快捷键](fg:green,mod:bold)  j/k 翻页  ←/→ 切章  g 跳转  / 搜索",
+		"          s 书签  B 书签列表  m 目录  z 精简/全信息",
+		"          , 阅读设置  c 颜色  t 自动翻页  q 书架",
+		"          再按 ? 隐藏",
+	}
+	visible := readingVisibleSourceLines()
+	reserved := len(help) + 1
+	if visible > reserved && len(lines)+reserved > visible {
+		lines = lines[:max(0, visible-reserved)]
+	}
+	lines = append(lines, "")
+	lines = append(lines, help...)
+	return strings.Join(lines, "\n")
 }

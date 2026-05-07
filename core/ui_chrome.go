@@ -1,11 +1,15 @@
 package core
 
-import "strings"
+import (
+	"strings"
+	"time"
+)
 
 func refreshChrome() {
 	if app == nil || app.config == nil {
 		return
 	}
+	updateStatusMessageLifecycle()
 	th := currentTheme()
 	if app.bossKey {
 		applyBossChrome(th)
@@ -22,7 +26,7 @@ func refreshChrome() {
 	left.SetTitle(" " + th.LeftName + " ")
 	right.SetTitle(" " + th.RightName + " ")
 	footer.SetTitle(" " + strings.ToLower(th.FooterTag) + " ")
-	if app.mode == modeHome || app.mode == modeImportInput || app.mode == modeDeleteConfirm {
+	if app.mode == modeHome || app.mode == modeImportInput || app.mode == modeDeleteConfirm || app.mode == modeBookshelfSearchInput {
 		main.SetTitle(" " + th.HomeName + " ")
 	}
 
@@ -32,7 +36,8 @@ func refreshChrome() {
 		left.SetBorder(false)
 		right.SetBorder(false)
 		footer.SetBorder(false)
-		main.SetBorder(showBorder)
+		main.SetBorder(false)
+		main.SetTitle("")
 		footer.SetTitle("")
 	} else {
 		header.SetBorder(showBorder)
@@ -62,6 +67,71 @@ func refreshChrome() {
 	default:
 		main.SetScrollable(false)
 	}
+}
+
+func updateStatusMessageLifecycle() {
+	now := time.Now()
+	if app.statusMessage != app.lastStatusMessage {
+		app.lastStatusMessage = app.statusMessage
+		app.statusMessageGeneration++
+		app.statusMessageUntil = statusMessageExpiry(app.statusMessage, now)
+		scheduleStatusMessageClear(app.statusMessage, app.statusMessageGeneration, app.statusMessageUntil)
+	}
+	if !app.statusMessageUntil.IsZero() && !now.Before(app.statusMessageUntil) {
+		app.statusMessage = ""
+		app.lastStatusMessage = ""
+		app.statusMessageUntil = time.Time{}
+		app.statusMessageGeneration++
+	}
+}
+
+func statusMessageExpiry(message string, now time.Time) time.Time {
+	message = strings.TrimSpace(message)
+	if message == "" || isPersistentStatusMessage(message) {
+		return time.Time{}
+	}
+	if isErrorStatusMessage(message) {
+		return now.Add(8 * time.Second)
+	}
+	return now.Add(3 * time.Second)
+}
+
+func isPersistentStatusMessage(message string) bool {
+	return strings.HasPrefix(message, "正在") || strings.Contains(message, "进行中")
+}
+
+func isErrorStatusMessage(message string) bool {
+	for _, marker := range []string{"失败", "错误", "无法", "未找到", "不存在", "无效", "没有可", "书架为空"} {
+		if strings.Contains(message, marker) {
+			return true
+		}
+	}
+	return false
+}
+
+func scheduleStatusMessageClear(message string, generation int, until time.Time) {
+	if until.IsZero() || tApp == nil {
+		return
+	}
+	delay := time.Until(until)
+	if delay < 0 {
+		delay = 0
+	}
+	go func() {
+		time.Sleep(delay)
+		queueUIUpdate(func() {
+			if app == nil || app.statusMessageGeneration != generation || app.statusMessage != message {
+				return
+			}
+			if !app.statusMessageUntil.IsZero() && !time.Now().Before(app.statusMessageUntil) {
+				app.statusMessage = ""
+				app.lastStatusMessage = ""
+				app.statusMessageUntil = time.Time{}
+				app.statusMessageGeneration++
+				refreshChrome()
+			}
+		})
+	}()
 }
 
 func applyBossChrome(th theme) {

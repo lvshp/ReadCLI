@@ -145,6 +145,9 @@ func readingContentWidth(mainWidth int) int {
 		return 80
 	}
 	if app != nil && app.reader != nil {
+		if compactReadingUI() {
+			return compactReadingContentWidth(width)
+		}
 		target := int(float64(width) * readingWidthRatio())
 		if target < 28 {
 			target = 28
@@ -159,6 +162,26 @@ func readingContentWidth(mainWidth int) int {
 		return target
 	}
 	return width
+}
+
+func compactReadingContentWidth(width int) int {
+	if width <= 0 {
+		width = fixedWidth
+	}
+	if width <= 44 {
+		return max(20, width-4)
+	}
+	target := int(float64(width) * 0.62)
+	if target > 72 {
+		target = 72
+	}
+	if target < 36 {
+		target = 36
+	}
+	if target > width-8 {
+		target = width - 8
+	}
+	return max(20, target)
 }
 
 func readingVisibleSourceLines() int {
@@ -188,6 +211,9 @@ func readingMaxSourceLines() int {
 }
 
 func formatReadingPanel(text string) string {
+	if compactReadingUI() {
+		return formatCompactReadingPanel(text)
+	}
 	text = strings.TrimRight(text, "\n")
 	if text == "" {
 		return ""
@@ -209,6 +235,46 @@ func formatReadingPanel(text string) string {
 	}
 	for i := 0; i < readingMarginBottom(); i++ {
 		padded = append(padded, "")
+	}
+	return strings.Join(padded, "\n")
+}
+
+func formatCompactReadingPanel(text string) string {
+	text = strings.TrimRight(text, "\n")
+	if text == "" {
+		return ""
+	}
+	lines := strings.Split(text, "\n")
+	contentWidth := app.contentWidth
+	if contentWidth <= 0 {
+		contentWidth = compactReadingContentWidth(mainContentWidth)
+	}
+	leftPadWidth := 2
+	if mainContentWidth > contentWidth {
+		leftPadWidth = (mainContentWidth - contentWidth) / 2
+	}
+	if mainContentWidth <= 52 && leftPadWidth > 2 {
+		leftPadWidth = 2
+	}
+	topPad := 1
+	if mainContentHeight >= 34 {
+		topPad = 3
+	} else if mainContentHeight >= 22 {
+		topPad = 2
+	}
+	lineGap := readingLineSpacing()
+	leftPad := strings.Repeat(" ", max(0, leftPadWidth))
+	padded := make([]string, 0, len(lines)*(lineGap+1)+topPad)
+	for i := 0; i < topPad; i++ {
+		padded = append(padded, "")
+	}
+	for i, line := range lines {
+		padded = append(padded, leftPad+line)
+		if i != len(lines)-1 {
+			for gap := 0; gap < lineGap; gap++ {
+				padded = append(padded, "")
+			}
+		}
 	}
 	return strings.Join(padded, "\n")
 }
