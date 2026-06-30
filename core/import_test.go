@@ -150,6 +150,26 @@ func TestNormalizeImportInputPath(t *testing.T) {
 	}
 }
 
+func TestLoadBookshelfBookDoesNotSetLastReadAtOnImport(t *testing.T) {
+	tempDir := t.TempDir()
+	t.Setenv("READCLI_DATA_DIR", filepath.Join(tempDir, "readcli-test-data"))
+	txtPath := filepath.Join(tempDir, "one.txt")
+	if err := os.WriteFile(txtPath, []byte("第1章 开始\n正文"), 0644); err != nil {
+		t.Fatalf("write txt: %v", err)
+	}
+
+	book, err := loadBookshelfBook(txtPath)
+	if err != nil {
+		t.Fatalf("loadBookshelfBook() error = %v", err)
+	}
+	if book.LastReadAt != "" {
+		t.Fatalf("LastReadAt = %q, want empty on import", book.LastReadAt)
+	}
+	if book.ImportedAt != "" {
+		t.Fatalf("ImportedAt = %q, want empty before upsert", book.ImportedAt)
+	}
+}
+
 func writeTestZip(path string, files map[string]string) error {
 	file, err := os.Create(path)
 	if err != nil {

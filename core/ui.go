@@ -149,7 +149,7 @@ func Run(initialFile string, requestedLines int, version string) {
 
 	if initialFile != "" {
 		if err := openBook(initialFile); err != nil {
-			app.statusMessage = err.Error()
+			setStatus(statusError, err.Error())
 			app.mode = modeHome
 		}
 		refreshChrome()

@@ -71,42 +71,17 @@ func refreshChrome() {
 
 func updateStatusMessageLifecycle() {
 	now := time.Now()
-	if app.statusMessage != app.lastStatusMessage {
+	if app.statusMessage != app.lastStatusMessage || app.statusMessageKind != app.lastStatusMessageKind {
 		app.lastStatusMessage = app.statusMessage
+		app.lastStatusMessageKind = app.statusMessageKind
 		app.statusMessageGeneration++
-		app.statusMessageUntil = statusMessageExpiry(app.statusMessage, now)
 		scheduleStatusMessageClear(app.statusMessage, app.statusMessageGeneration, app.statusMessageUntil)
 	}
 	if !app.statusMessageUntil.IsZero() && !now.Before(app.statusMessageUntil) {
-		app.statusMessage = ""
+		clearStatus()
 		app.lastStatusMessage = ""
-		app.statusMessageUntil = time.Time{}
-		app.statusMessageGeneration++
+		app.lastStatusMessageKind = statusInfo
 	}
-}
-
-func statusMessageExpiry(message string, now time.Time) time.Time {
-	message = strings.TrimSpace(message)
-	if message == "" || isPersistentStatusMessage(message) {
-		return time.Time{}
-	}
-	if isErrorStatusMessage(message) {
-		return now.Add(8 * time.Second)
-	}
-	return now.Add(3 * time.Second)
-}
-
-func isPersistentStatusMessage(message string) bool {
-	return strings.HasPrefix(message, "正在") || strings.Contains(message, "进行中")
-}
-
-func isErrorStatusMessage(message string) bool {
-	for _, marker := range []string{"失败", "错误", "无法", "未找到", "不存在", "无效", "没有可", "书架为空"} {
-		if strings.Contains(message, marker) {
-			return true
-		}
-	}
-	return false
 }
 
 func scheduleStatusMessageClear(message string, generation int, until time.Time) {
@@ -124,10 +99,9 @@ func scheduleStatusMessageClear(message string, generation int, until time.Time)
 				return
 			}
 			if !app.statusMessageUntil.IsZero() && !time.Now().Before(app.statusMessageUntil) {
-				app.statusMessage = ""
+				clearStatus()
 				app.lastStatusMessage = ""
-				app.statusMessageUntil = time.Time{}
-				app.statusMessageGeneration++
+				app.lastStatusMessageKind = statusInfo
 				refreshChrome()
 			}
 		})
@@ -193,9 +167,9 @@ func runConfiguredBossProgram() bool {
 
 	err := <-result
 	if err != nil {
-		app.statusMessage = "老板键程序退出: " + err.Error()
+		setStatus(statusError, "老板键程序退出: "+err.Error())
 	} else {
-		app.statusMessage = "已返回阅读界面"
+		setStatus(statusInfo, "已返回阅读界面")
 	}
 	applyLayoutFromApp()
 	return true

@@ -371,9 +371,28 @@ func SortBooks(books []BookshelfBook, order string) {
 		case "imported":
 			return books[i].ImportedAt > books[j].ImportedAt
 		default:
-			return books[i].LastReadAt > books[j].LastReadAt
+			return compareLastRead(books[i], books[j])
 		}
 	})
+}
+
+func compareLastRead(a, b BookshelfBook) bool {
+	aLast := strings.TrimSpace(a.LastReadAt)
+	bLast := strings.TrimSpace(b.LastReadAt)
+	switch {
+	case aLast != "" && bLast != "":
+		if aLast != bLast {
+			return aLast > bLast
+		}
+	case aLast != "":
+		return true
+	case bLast != "":
+		return false
+	}
+	if a.ImportedAt != b.ImportedAt {
+		return a.ImportedAt > b.ImportedAt
+	}
+	return strings.ToLower(a.Title) < strings.ToLower(b.Title)
 }
 
 func FilterBooks(books []BookshelfBook, filter string) []BookshelfBook {

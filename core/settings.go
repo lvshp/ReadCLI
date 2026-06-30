@@ -1,7 +1,6 @@
 package core
 
 import (
-	"fmt"
 	"time"
 
 	"github.com/lvshp/ReadCLI/lib"
@@ -13,7 +12,7 @@ func switchTheme() {
 		if name == current {
 			app.config.Theme = app.themeOrder[(i+1)%len(app.themeOrder)]
 			saveConfig("保存配置")
-			app.statusMessage = "主题已切换为 " + app.config.Theme
+			setStatus(statusInfo, "主题已切换为 "+app.config.Theme)
 			return
 		}
 	}
@@ -32,9 +31,9 @@ func toggleCompactMode() {
 	app.config.CompactMode = app.compactMode
 	saveConfig("保存配置")
 	if app.compactMode {
-		app.statusMessage = "已切换为精简阅读界面"
+		setStatus(statusInfo, "已切换为精简阅读界面")
 	} else {
-		app.statusMessage = "已切换为全信息阅读界面"
+		setStatus(statusInfo, "已切换为全信息阅读界面")
 	}
 	applyLayoutFromAppWithoutReflow()
 }
@@ -43,14 +42,14 @@ func toggleTimer() {
 	app.timer = !app.timer
 	if app.timer {
 		refreshTimerTicker()
-		app.statusMessage = "自动翻页已开启"
+		setStatus(statusInfo, "自动翻页已开启")
 		return
 	}
 	if app.ticker != nil {
 		app.ticker.Stop()
 		app.ticker = nil
 	}
-	app.statusMessage = "自动翻页已关闭"
+	setStatus(statusInfo, "自动翻页已关闭")
 }
 
 func refreshTimerTicker() {
@@ -87,7 +86,7 @@ func refreshTimerTicker() {
 func openReadingSettings() {
 	setMode(modeReadingSettings)
 	app.settingsIndex = 0
-	app.statusMessage = "已打开阅读设置"
+	setStatus(statusInfo, "已打开阅读设置")
 }
 
 func moveReadingSettings(delta int) {
@@ -136,7 +135,7 @@ func adjustReadingSetting(delta int) {
 	if app.reader != nil {
 		applyLayoutFromApp()
 	}
-	app.statusMessage = "阅读设置已更新"
+	setStatus(statusInfo, "阅读设置已更新")
 }
 
 func activateReadingSetting() {
@@ -151,14 +150,14 @@ func activateReadingSetting() {
 	case 8:
 		app.config.ReadingHighContrast = !app.config.ReadingHighContrast
 		saveConfig("保存配置")
-		app.statusMessage = "高对比已切换"
+		setStatus(statusInfo, "高对比已切换")
 	case 9:
 		app.config.ForceBasicColor = !app.config.ForceBasicColor
 		saveConfig("保存配置")
 		if app.config.ForceBasicColor {
-			app.statusMessage = "已切换为基础色模式"
+			setStatus(statusInfo, "已切换为基础色模式")
 		} else {
-			app.statusMessage = "已切换为扩展颜色模式"
+			setStatus(statusInfo, "已切换为扩展颜色模式")
 		}
 	}
 }
@@ -166,14 +165,14 @@ func activateReadingSetting() {
 func applyReadingTextColorInput() {
 	value := lib.NormalizeConfiguredColor(app.inputValue)
 	if value == "" {
-		app.statusMessage = "颜色格式无效"
+		setStatus(statusError, "颜色格式无效")
 		return
 	}
 	app.config.ReadingTextColor = value
 	app.mode = modeReadingSettings
 	resetInputState()
 	saveConfig("保存配置")
-	app.statusMessage = "字体颜色已更新"
+	setStatus(statusInfo, "字体颜色已更新")
 }
 
 func cycleReadingColorPreset() {
@@ -191,7 +190,7 @@ func cycleReadingColorPreset() {
 	}
 	app.config.ReadingTextColor = palette[(index+1+len(palette))%len(palette)]
 	saveConfig("保存配置")
-	app.statusMessage = "字体颜色已切换为 " + app.config.ReadingTextColor
+	setStatus(statusInfo, "字体颜色已切换为 "+app.config.ReadingTextColor)
 }
 
 func setDisplayLines(lines int) {
@@ -203,9 +202,9 @@ func setDisplayLines(lines int) {
 	saveConfig("保存配置")
 	visible := readingVisibleSourceLines()
 	if visible < app.displayLines {
-		app.statusMessage = fmt.Sprintf("每页正文 %d 行（当前窗口最多显示 %d 行）", app.displayLines, visible)
+		setStatusf(statusInfo, "每页正文 %d 行（当前窗口最多显示 %d 行）", app.displayLines, visible)
 	} else {
-		app.statusMessage = fmt.Sprintf("每页正文 %d 行", visible)
+		setStatusf(statusInfo, "每页正文 %d 行", visible)
 	}
 	syncCurrentBookState()
 }
@@ -218,10 +217,10 @@ func displayBossKey() {
 	if app.bossKey {
 		app.showHelp = false
 		app.showProgress = false
-		app.statusMessage = "Boss Key 已开启"
+		setStatus(statusInfo, "Boss Key 已开启")
 		return
 	}
-	app.statusMessage = "Boss Key 已关闭"
+	setStatus(statusInfo, "Boss Key 已关闭")
 }
 
 func persistState() {

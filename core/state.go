@@ -47,6 +47,15 @@ type updateMessage struct {
 	Manual   bool
 }
 
+type statusKind string
+
+const (
+	statusInfo       statusKind = "info"
+	statusError      statusKind = "error"
+	statusProgress   statusKind = "progress"
+	statusPersistent statusKind = "persistent"
+)
+
 type theme struct {
 	Name       string
 	HeaderName string
@@ -94,7 +103,9 @@ type appState struct {
 	lastSearchIndex int
 
 	statusMessage           string
+	statusMessageKind       statusKind
 	lastStatusMessage       string
+	lastStatusMessageKind   statusKind
 	statusMessageUntil      time.Time
 	statusMessageGeneration int
 	sessionStart            time.Time

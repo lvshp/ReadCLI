@@ -166,3 +166,22 @@ func TestFilterBooks(t *testing.T) {
 		t.Fatalf("finished filter count = %d, want 1", got)
 	}
 }
+
+func TestSortBooksRecentPrefersLastReadThenImported(t *testing.T) {
+	books := []BookshelfBook{
+		{Title: "Imported Later", ImportedAt: "2026-06-30T10:00:00Z"},
+		{Title: "Read Earlier", LastReadAt: "2026-06-29T10:00:00Z", ImportedAt: "2026-06-01T10:00:00Z"},
+		{Title: "Read Latest", LastReadAt: "2026-06-30T11:00:00Z", ImportedAt: "2026-06-01T10:00:00Z"},
+		{Title: "Imported First", ImportedAt: "2026-06-20T10:00:00Z"},
+	}
+
+	SortBooks(books, "recent")
+
+	got := []string{books[0].Title, books[1].Title, books[2].Title, books[3].Title}
+	want := []string{"Read Latest", "Read Earlier", "Imported Later", "Imported First"}
+	for i := range want {
+		if got[i] != want[i] {
+			t.Fatalf("recent sort order = %#v, want %#v", got, want)
+		}
+	}
+}

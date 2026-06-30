@@ -13,7 +13,7 @@ func removeSelectedBook(deleteFile bool) {
 	}
 	if deleteFile {
 		if err := os.Remove(path); err != nil {
-			app.statusMessage = "删除本地文件失败: " + shorten(err.Error(), 96)
+			setStatus(statusError, "删除本地文件失败: "+shorten(err.Error(), 96))
 			return
 		}
 	}
@@ -21,9 +21,9 @@ func removeSelectedBook(deleteFile bool) {
 	app.mode = modeHome
 	app.deleteTargetPath = ""
 	app.deleteTargetTitle = ""
-	app.statusMessage = "已移出书架"
+	setStatus(statusInfo, "已移出书架")
 	if deleteFile {
-		app.statusMessage = "已删除本地文件并移出书架"
+		setStatus(statusInfo, "已删除本地文件并移出书架")
 	}
 }
 
@@ -41,7 +41,7 @@ func removeBookState(path string) {
 func prepareDeleteSelectedBook() {
 	book := selectedBook()
 	if book == nil {
-		app.statusMessage = "没有可删除的书籍"
+		setStatus(statusError, "没有可删除的书籍")
 		return
 	}
 	app.deleteTargetPath = book.Path

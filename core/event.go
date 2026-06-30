@@ -45,7 +45,7 @@ func handleReadingEvent(id string) {
 		syncCurrentBookState()
 		app.mode = modeHome
 		app.showReadingQuickHelp = false
-		app.statusMessage = "已回到书架"
+		setStatus(statusInfo, "已回到书架")
 	case "?":
 		displayReadingQuickHelp()
 	case "p":
@@ -63,7 +63,7 @@ func handleReadingEvent(id string) {
 			moveReading(pageStep())
 		} else {
 			if num, err := lib.ParseRowNum(app.rowNumber); err != nil {
-				app.statusMessage = err.Error()
+				setStatus(statusError, err.Error())
 			} else {
 				moveReading(num)
 			}
@@ -74,7 +74,7 @@ func handleReadingEvent(id string) {
 			moveReading(-pageStep())
 		} else {
 			if num, err := lib.ParseRowNum(app.rowNumber); err != nil {
-				app.statusMessage = err.Error()
+				setStatus(statusError, err.Error())
 			} else {
 				moveReading(1 - num)
 			}
@@ -114,7 +114,7 @@ func handleReadingEvent(id string) {
 		switchTheme()
 	case "0", "1", "2", "3", "4", "5", "6", "7", "8", "9":
 		app.rowNumber += id
-		app.statusMessage = "跳转输入: " + app.rowNumber
+		setStatus(statusInfo, "跳转输入: "+app.rowNumber)
 	}
 }
 
@@ -168,6 +168,7 @@ func handleBookmarkEvent(id string) {
 }
 
 func handleTextInputEvent(id string, onEnter func()) {
+	originalMode := app.mode
 	switch id {
 	case "<Escape>":
 		if app.mode == modeReadingColorInput {
@@ -176,17 +177,19 @@ func handleTextInputEvent(id string, onEnter func()) {
 			app.bookshelfQuery = ""
 			app.shelfIndex = 0
 			app.mode = modeHome
-			app.statusMessage = "书架搜索已取消"
+			setStatus(statusInfo, "书架搜索已取消")
 		} else if app.mode == modeReadingJumpInput {
 			app.mode = modeReading
-			app.statusMessage = "已取消跳转"
+			setStatus(statusInfo, "已取消跳转")
 		} else if app.currentFile != "" {
 			app.mode = modeReading
 		} else {
 			app.mode = modeHome
 		}
 		resetInputState()
-		app.statusMessage = "已取消输入"
+		if originalMode != modeBookshelfSearchInput && originalMode != modeReadingJumpInput {
+			setStatus(statusInfo, "已取消输入")
+		}
 	case "<Backspace>", "<Backspace2>":
 		deleteInputBackward()
 	case "<Delete>":
@@ -251,9 +254,9 @@ func handleUpdatePromptEvent(id string) {
 		}
 		app.mode = app.updateReturnMode
 		if app.updatePromptManual {
-			app.statusMessage = "已取消本次更新"
+			setStatus(statusInfo, "已取消本次更新")
 		} else {
-			app.statusMessage = "该版本已忽略，之后将不再自动提醒"
+			setStatus(statusInfo, "该版本已忽略，之后将不再自动提醒")
 		}
 	}
 }
@@ -289,7 +292,7 @@ func scrollUpdatePrompt(id string) bool {
 func handleUpdatingEvent(id string) {
 	switch id {
 	case "q", "<C-c>":
-		app.statusMessage = "更新进行中，请稍候"
+		setStatus(statusProgress, "更新进行中，请稍候")
 	}
 }
 

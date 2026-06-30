@@ -128,6 +128,12 @@ func buildRightPanel(th theme) string {
 			} else if book.ProgressPos > 0 {
 				status = "在读"
 			}
+			continueHint := "  回车从头开始"
+			if book.ProgressPercent >= 100 {
+				continueHint = "  回车重新打开已读书籍"
+			} else if book.ProgressPos > 0 {
+				continueHint = "  回车继续上次阅读位置"
+			}
 			lines = append(lines,
 				"  标题    "+shorten(book.Title, 16),
 				"  格式    "+strings.ToUpper(book.Format),
@@ -137,15 +143,9 @@ func buildRightPanel(th theme) string {
 				"  最近    "+shorten(lastRead, 16),
 				"",
 				"[Continue](fg:yellow,mod:bold)",
-				"  回车继续阅读",
+				continueHint,
 			)
 		}
-		lines = append(lines, "",
-			"[Recent Status](fg:green,mod:bold)",
-			"  home ready",
-			"  import available",
-			"  theme synced",
-		)
 		return strings.Join(lines, "\n")
 	}
 
@@ -174,7 +174,6 @@ func buildRightPanel(th theme) string {
 	lines = append(lines, buildDetailBlock("总行数", fmt.Sprintf("%d lines", total), width)...)
 	lines = append(lines, "", "[Search](fg:yellow,mod:bold)", "")
 	lines = append(lines, buildDetailBlock("查询", emptyFallback(app.searchQuery, "无"), width)...)
-	lines = append(lines, "", "[Recent Logs](fg:green,mod:bold)", "  reader resumed", "  progress synced", "  layout stable")
 	return strings.Join(lines, "\n")
 }
 

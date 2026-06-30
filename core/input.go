@@ -1,7 +1,6 @@
 package core
 
 import (
-	"fmt"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -88,7 +87,7 @@ func completeImportPath() {
 	if err != nil {
 		app.inputHints = nil
 		app.inputHintIndex = 0
-		app.statusMessage = "无法读取目录: " + shorten(dir, 36)
+		setStatus(statusError, "无法读取目录: "+shorten(dir, 36))
 		return
 	}
 
@@ -112,7 +111,7 @@ func completeImportPath() {
 	if len(matches) == 0 {
 		app.inputHints = nil
 		app.inputHintIndex = 0
-		app.statusMessage = "没有匹配的路径"
+		setStatus(statusError, "没有匹配的路径")
 		return
 	}
 
@@ -136,7 +135,7 @@ func completeImportPath() {
 		app.inputCursor = len([]rune(app.inputValue))
 		app.inputHints = nil
 		app.inputHintIndex = 0
-		app.statusMessage = "已补全路径"
+		setStatus(statusInfo, "已补全路径")
 		return
 	}
 	if sameStringSlice(previousHints, app.inputHints) {
@@ -144,7 +143,7 @@ func completeImportPath() {
 	} else {
 		app.inputHintIndex = 0
 	}
-	app.statusMessage = fmt.Sprintf("找到 %d 个候选", len(matches))
+	setStatusf(statusInfo, "找到 %d 个候选", len(matches))
 }
 
 func moveInputHint(delta int) {
@@ -200,7 +199,7 @@ func acceptSelectedImportHint() bool {
 	app.inputCursor = len([]rune(app.inputValue))
 	app.inputHints = nil
 	app.inputHintIndex = 0
-	app.statusMessage = "已填入候选路径"
+	setStatus(statusInfo, "已填入候选路径")
 	return true
 }
 
@@ -316,10 +315,10 @@ func sameStringSlice(a, b []string) bool {
 func toggleImportRecursive() {
 	app.importRecursive = !app.importRecursive
 	if app.importRecursive {
-		app.statusMessage = "目录导入已切换为递归子目录"
+		setStatus(statusInfo, "目录导入已切换为递归子目录")
 		return
 	}
-	app.statusMessage = "目录导入已切换为仅当前层"
+	setStatus(statusInfo, "目录导入已切换为仅当前层")
 }
 
 func importModeLabel() string {

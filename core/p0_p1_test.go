@@ -3,7 +3,6 @@ package core
 import (
 	"strings"
 	"testing"
-	"time"
 
 	"github.com/lvshp/ReadCLI/lib"
 )
@@ -157,19 +156,40 @@ func TestRunReadingJumpSupportsPercentAndChapter(t *testing.T) {
 	}
 }
 
-func TestStatusMessageExpiryKeepsLongRunningAndDelaysErrors(t *testing.T) {
-	now := statusMessageExpiry("正在打开 test.epub", testNow())
-	if !now.IsZero() {
-		t.Fatalf("long-running status should not expire, got %v", now)
+func TestStatusExpiryUsesKind(t *testing.T) {
+	if expiry := statusExpiry(statusProgress, "正在打开"); !expiry.IsZero() {
+		t.Fatalf("progress status should not expire, got %v", expiry)
 	}
-
-	base := testNow()
-	errExpiry := statusMessageExpiry("打开失败: nope", base)
-	if errExpiry.Sub(base) != 8*time.Second {
-		t.Fatalf("error status ttl = %s, want 8s", errExpiry.Sub(base))
+	if expiry := statusExpiry(statusPersistent, "保持显示"); !expiry.IsZero() {
+		t.Fatalf("persistent status should not expire, got %v", expiry)
+	}
+	if expiry := statusExpiry(statusInfo, "普通提示"); expiry.IsZero() {
+		t.Fatal("info status should expire")
+	}
+	if expiry := statusExpiry(statusError, "错误提示"); expiry.IsZero() {
+		t.Fatal("error status should expire")
 	}
 }
 
-func testNow() time.Time {
-	return time.Unix(1000, 0)
+func TestEscapeFromBookshelfSearchKeepsSpecificStatus(t *testing.T) {
+	app = &appState{
+		mode:           modeBookshelfSearchInput,
+		bookshelfQuery: "mars",
+	}
+
+	handleTextInputEvent("<Escape>", nil)
+	if app.statusMessage != "书架搜索已取消" {
+		t.Fatalf("statusMessage = %q, want 书架搜索已取消", app.statusMessage)
+	}
+}
+
+func TestEscapeFromReadingJumpKeepsSpecificStatus(t *testing.T) {
+	app = &appState{
+		mode: modeReadingJumpInput,
+	}
+
+	handleTextInputEvent("<Escape>", nil)
+	if app.statusMessage != "已取消跳转" {
+		t.Fatalf("statusMessage = %q, want 已取消跳转", app.statusMessage)
+	}
 }

@@ -93,7 +93,7 @@ func applyLoadedBook(path string, r reader.Reader) {
 		}
 	}
 	app.currentBook = upsertCurrentBook(path)
-	app.statusMessage = "已打开 " + filepath.Base(path)
+	setStatus(statusInfo, "已打开 "+filepath.Base(path))
 }
 
 func upsertCurrentBook(path string) *lib.BookshelfBook {
@@ -162,12 +162,12 @@ func syncCurrentBookState() {
 func openSelectedBook() {
 	book := selectedBook()
 	if book == nil {
-		app.statusMessage = "书架为空"
+		setStatus(statusError, "书架为空")
 		return
 	}
 	path := normalizeBookPath(book.Path)
 	if r, cached, err := cachedReaderIfFresh(path); err != nil {
-		app.statusMessage = err.Error()
+		setStatus(statusError, err.Error())
 		return
 	} else if cached {
 		applyLoadedBook(path, r)
@@ -176,7 +176,7 @@ func openSelectedBook() {
 	}
 
 	app.loadingBookPath = path
-	app.statusMessage = "正在打开 " + shorten(filepath.Base(path), 24)
+	setStatus(statusProgress, "正在打开 "+shorten(filepath.Base(path), 24))
 	refreshChrome()
 
 	go func(requestedPath string) {
@@ -187,7 +187,7 @@ func openSelectedBook() {
 			}
 			app.loadingBookPath = ""
 			if err != nil {
-				app.statusMessage = err.Error()
+				setStatus(statusError, err.Error())
 				refreshChrome()
 				return
 			}

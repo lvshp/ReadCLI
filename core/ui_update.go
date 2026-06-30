@@ -15,7 +15,7 @@ func startUpdateCheck(manual bool) {
 	}
 	if app.currentVersion == "" || !lib.CurrentPlatformSupported() {
 		if manual {
-			app.statusMessage = "当前版本不支持自动更新"
+			setStatus(statusError, "当前版本不支持自动更新")
 		}
 		return
 	}
@@ -63,7 +63,7 @@ func handleUpdateMessage(message updateMessage) {
 			app.updateReturnMode = app.mode
 			app.mode = modeUpdatePrompt
 		}
-		app.statusMessage = "发现新版本 " + message.Release.TagName
+		setStatus(statusInfo, "发现新版本 "+message.Release.TagName)
 	case updateInstalled:
 		if message.Release != nil {
 			app.updateRelease = message.Release
@@ -73,19 +73,19 @@ func handleUpdateMessage(message updateMessage) {
 			saveConfig("保存配置")
 		}
 		app.mode = modeUpdateRestart
-		app.statusMessage = "更新已安装，退出后重新启动生效"
+		setStatus(statusInfo, "更新已安装，退出后重新启动生效")
 	case updateFailed:
 		app.mode = app.updateReturnMode
 		if message.Err != nil {
-			app.statusMessage = "更新失败: " + shorten(message.Err.Error(), 96)
+			setStatus(statusError, "更新失败: "+shorten(message.Err.Error(), 96))
 		} else {
-			app.statusMessage = "更新失败"
+			setStatus(statusError, "更新失败")
 		}
 	case updateCurrent:
-		app.statusMessage = "当前已经是最新版本"
+		setStatus(statusInfo, "当前已经是最新版本")
 	case updateProgress:
 		app.updateProgress = message.Progress
-		app.statusMessage = updateProgressStatus(message.Progress)
+		setStatus(statusProgress, updateProgressStatus(message.Progress))
 	}
 }
 
@@ -93,7 +93,7 @@ func triggerManualUpdateCheck() {
 	if app == nil {
 		return
 	}
-	app.statusMessage = "正在检查更新..."
+	setStatus(statusProgress, "正在检查更新...")
 	renderUIIfReady()
 	startUpdateCheck(true)
 }
@@ -104,18 +104,18 @@ func startUpdateInstall() {
 	}
 	executablePath, err := os.Executable()
 	if err != nil {
-		app.statusMessage = "无法定位当前程序"
+		setStatus(statusError, "无法定位当前程序")
 		return
 	}
 	asset := lib.SelectReleaseAsset(app.updateRelease, runtime.GOOS, runtime.GOARCH)
 	if asset == nil {
-		app.statusMessage = "当前平台暂无可用更新包"
+		setStatus(statusError, "当前平台暂无可用更新包")
 		return
 	}
 
 	app.mode = modeUpdating
 	app.updateProgress = lib.UpdateProgress{Stage: lib.UpdateStageDownload}
-	app.statusMessage = "正在安装更新 " + app.updateRelease.TagName
+	setStatus(statusProgress, "正在安装更新 "+app.updateRelease.TagName)
 	renderUIIfReady()
 
 	go func(version string, release *lib.ReleaseInfo, downloadURL, exePath string) {

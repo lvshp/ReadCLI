@@ -7,7 +7,7 @@ func notePersistenceError(action string, err error) bool {
 		return false
 	}
 	if app != nil {
-		app.statusMessage = action + "失败: " + shorten(err.Error(), 96)
+		setStatus(statusError, action+"失败: "+shorten(err.Error(), 96))
 	}
 	return true
 }

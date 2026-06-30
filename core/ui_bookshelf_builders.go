@@ -35,8 +35,8 @@ func buildBookshelfPanel() string {
 			"",
 			"导入后会自动记录：",
 			"  - 阅读进度",
-			"  - 最后阅读时间",
 			"  - 当前章节信息",
+			"  - 首次打开后记录最近阅读时间",
 		)
 		return strings.Join(lines, "\n")
 	}
