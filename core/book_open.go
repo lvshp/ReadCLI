@@ -1,6 +1,7 @@
 package core
 
 import (
+	"os"
 	"path/filepath"
 	"strings"
 	"time"
@@ -163,13 +164,26 @@ func openSelectedBook() {
 		return
 	}
 	path := normalizeBookPath(book.Path)
-	if r, cached, err := cachedReaderIfFresh(path); err != nil {
+	if info, err := os.Stat(path); err != nil {
 		setStatus(statusError, err.Error())
 		return
-	} else if cached {
-		applyLoadedBook(path, r)
-		refreshChrome()
-		return
+	} else {
+		if r, cached, err := cachedReaderIfFresh(path, info); err != nil {
+			setStatus(statusError, err.Error())
+			return
+		} else if cached {
+			applyLoadedBook(path, r)
+			refreshChrome()
+			return
+		}
+		if r, cached, err := diskCachedReader(path, info); err != nil {
+			setStatus(statusError, err.Error())
+			return
+		} else if cached {
+			applyLoadedBook(path, r)
+			refreshChrome()
+			return
+		}
 	}
 
 	app.bookshelfState.loadingBookPath = path

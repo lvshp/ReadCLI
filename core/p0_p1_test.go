@@ -12,6 +12,7 @@ type fakeReader struct {
 	total       int
 	chapter     string
 	gotoChapter int
+	toc         string
 }
 
 func (r *fakeReader) Load(path string) error       { return nil }
@@ -49,7 +50,7 @@ func (r *fakeReader) CurrentChapterTitle() string { return r.chapter }
 func (r *fakeReader) CurrentChapterIndex() int    { return 0 }
 func (r *fakeReader) NextChapter() string         { return "" }
 func (r *fakeReader) PrevChapter() string         { return "" }
-func (r *fakeReader) GetTOC() string              { return "" }
+func (r *fakeReader) GetTOC() string              { return r.toc }
 func (r *fakeReader) GetTOCWithSelection(selected, pageSize int) string {
 	return ""
 }
@@ -203,5 +204,24 @@ func TestEscapeFromReadingJumpKeepsSpecificStatus(t *testing.T) {
 	handleTextInputEvent("<Escape>", nil)
 	if app.uiState.statusMessage != "已取消跳转" {
 		t.Fatalf("statusMessage = %q, want 已取消跳转", app.uiState.statusMessage)
+	}
+}
+
+func TestUpdateTOCSelectionClampsBounds(t *testing.T) {
+	app = &appState{
+		reader: &fakeReader{toc: "目录\n一\n二\n三"},
+		readingState: readingState{
+			tocIndex: 1,
+		},
+	}
+
+	updateTOCSelection(10)
+	if app.readingState.tocIndex != 2 {
+		t.Fatalf("tocIndex = %d, want 2", app.readingState.tocIndex)
+	}
+
+	updateTOCSelection(-10)
+	if app.readingState.tocIndex != 0 {
+		t.Fatalf("tocIndex = %d, want 0", app.readingState.tocIndex)
 	}
 }
