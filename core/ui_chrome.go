@@ -30,7 +30,7 @@ func refreshChrome() {
 		main.SetTitle(" " + th.HomeName + " ")
 	}
 
-	showBorder := app.showBorder
+	showBorder := app.uiState.showBorder
 	if compactReadingUI() {
 		header.SetBorder(false)
 		left.SetBorder(false)
@@ -71,16 +71,16 @@ func refreshChrome() {
 
 func updateStatusMessageLifecycle() {
 	now := time.Now()
-	if app.statusMessage != app.lastStatusMessage || app.statusMessageKind != app.lastStatusMessageKind {
-		app.lastStatusMessage = app.statusMessage
-		app.lastStatusMessageKind = app.statusMessageKind
-		app.statusMessageGeneration++
-		scheduleStatusMessageClear(app.statusMessage, app.statusMessageGeneration, app.statusMessageUntil)
+	if app.uiState.statusMessage != app.uiState.lastStatusMessage || app.uiState.statusMessageKind != app.uiState.lastStatusMessageKind {
+		app.uiState.lastStatusMessage = app.uiState.statusMessage
+		app.uiState.lastStatusMessageKind = app.uiState.statusMessageKind
+		app.uiState.statusMessageGeneration++
+		scheduleStatusMessageClear(app.uiState.statusMessage, app.uiState.statusMessageGeneration, app.uiState.statusMessageUntil)
 	}
-	if !app.statusMessageUntil.IsZero() && !now.Before(app.statusMessageUntil) {
+	if !app.uiState.statusMessageUntil.IsZero() && !now.Before(app.uiState.statusMessageUntil) {
 		clearStatus()
-		app.lastStatusMessage = ""
-		app.lastStatusMessageKind = statusInfo
+		app.uiState.lastStatusMessage = ""
+		app.uiState.lastStatusMessageKind = statusInfo
 	}
 }
 
@@ -95,13 +95,13 @@ func scheduleStatusMessageClear(message string, generation int, until time.Time)
 	go func() {
 		time.Sleep(delay)
 		queueUIUpdate(func() {
-			if app == nil || app.statusMessageGeneration != generation || app.statusMessage != message {
+			if app == nil || app.uiState.statusMessageGeneration != generation || app.uiState.statusMessage != message {
 				return
 			}
-			if !app.statusMessageUntil.IsZero() && !time.Now().Before(app.statusMessageUntil) {
+			if !app.uiState.statusMessageUntil.IsZero() && !time.Now().Before(app.uiState.statusMessageUntil) {
 				clearStatus()
-				app.lastStatusMessage = ""
-				app.lastStatusMessageKind = statusInfo
+				app.uiState.lastStatusMessage = ""
+				app.uiState.lastStatusMessageKind = statusInfo
 				refreshChrome()
 			}
 		})
@@ -115,7 +115,7 @@ func applyBossChrome(th theme) {
 	right.SetText(termuiStyleToTview(buildBossRightPanel()))
 	footer.SetText(termuiStyleToTview(buildBossFooter()))
 
-	showBorder := app.showBorder
+	showBorder := app.uiState.showBorder
 	header.SetBorder(showBorder)
 	main.SetBorder(showBorder)
 	left.SetBorder(showBorder)

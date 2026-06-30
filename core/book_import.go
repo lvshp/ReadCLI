@@ -9,9 +9,9 @@ import (
 )
 
 func importBook() {
-	path := strings.TrimSpace(app.inputValue)
+	path := strings.TrimSpace(app.uiState.input.value)
 	resetInputState()
-	app.mode = modeHome
+	transitionTo(modeHome)
 	if path == "" {
 		setStatus(statusInfo, "导入已取消")
 		return
@@ -24,7 +24,7 @@ func importBook() {
 		return
 	}
 	if info.IsDir() {
-		recursive := app.importRecursive
+		recursive := app.uiState.input.importRecursive
 		setStatus(statusProgress, importModeLabelFor(recursive)+"正在扫描目录...")
 		refreshChrome()
 		go runDirectoryImport(path, recursive)

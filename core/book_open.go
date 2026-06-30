@@ -37,17 +37,14 @@ func applyLoadedBook(path string, r reader.Reader) {
 	app.reader = r
 	app.currentFile = path
 	app.currentBook = nil
-	app.showHelp = false
-	app.showProgress = false
-	app.rowNumber = ""
-	app.searchQuery = ""
-	app.inputValue = ""
-	app.inputCursor = 0
-	app.inputHints = nil
-	app.inputHintIndex = 0
-	app.lastSearchIndex = -1
-	app.tocNumber = ""
-	app.mode = modeReading
+	app.readingState.showHelp = false
+	app.readingState.showProgress = false
+	app.readingState.rowNumber = ""
+	app.readingState.searchQuery = ""
+	app.readingState.lastSearchIndex = -1
+	app.readingState.tocNumber = ""
+	resetInputState()
+	transitionTo(modeReading)
 
 	var savedAnchor reader.ProgressAnchor
 	hasSavedAnchor := false
@@ -175,17 +172,17 @@ func openSelectedBook() {
 		return
 	}
 
-	app.loadingBookPath = path
+	app.bookshelfState.loadingBookPath = path
 	setStatus(statusProgress, "正在打开 "+shorten(filepath.Base(path), 24))
 	refreshChrome()
 
 	go func(requestedPath string) {
 		r, size, modTime, err := loadFreshReader(requestedPath)
 		queueUIUpdate(func() {
-			if app.loadingBookPath != requestedPath {
+			if app.bookshelfState.loadingBookPath != requestedPath {
 				return
 			}
-			app.loadingBookPath = ""
+			app.bookshelfState.loadingBookPath = ""
 			if err != nil {
 				setStatus(statusError, err.Error())
 				refreshChrome()

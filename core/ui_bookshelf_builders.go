@@ -14,8 +14,8 @@ func buildBookshelfPanel() string {
 	th := currentTheme()
 	lines = append(lines, "["+titleCase(th.HomeName)+"](fg:cyan,mod:bold)")
 	lines = append(lines, "")
-	if app.loadingBookPath != "" {
-		bookName := strings.TrimSuffix(filepath.Base(app.loadingBookPath), filepath.Ext(app.loadingBookPath))
+	if app.bookshelfState.loadingBookPath != "" {
+		bookName := strings.TrimSuffix(filepath.Base(app.bookshelfState.loadingBookPath), filepath.Ext(app.bookshelfState.loadingBookPath))
 		lines = append(lines,
 			"正在打开：",
 			"",
@@ -25,7 +25,7 @@ func buildBookshelfPanel() string {
 		)
 		return strings.Join(lines, "\n")
 	}
-	if len(books) == 0 && strings.TrimSpace(app.bookshelfQuery) == "" {
+	if len(books) == 0 && strings.TrimSpace(app.bookshelfState.query) == "" {
 		lines = append(lines,
 			"还没有导入任何书。",
 			"",
@@ -44,7 +44,7 @@ func buildBookshelfPanel() string {
 		lines = append(lines,
 			"没有匹配的书。",
 			"",
-			"当前搜索："+app.bookshelfQuery,
+			"当前搜索："+app.bookshelfState.query,
 			"",
 			"按 / 重新搜索，或按 Esc 清空搜索。",
 		)
@@ -52,14 +52,14 @@ func buildBookshelfPanel() string {
 	}
 
 	pageSize := bookshelfPageSize()
-	start := (app.shelfIndex / pageSize) * pageSize
+	start := (app.bookshelfState.shelfIndex / pageSize) * pageSize
 	end := start + pageSize
 	if end > len(books) {
 		end = len(books)
 	}
-	summary := fmt.Sprintf("共 %d 本  |  排序 %s  |  过滤 %s  |  第 %d/%d 页", len(books), readableSort(app.sortMode), readableFilter(app.filterMode), start/pageSize+1, (len(books)+pageSize-1)/pageSize)
-	if strings.TrimSpace(app.bookshelfQuery) != "" {
-		summary += "  |  搜索 " + app.bookshelfQuery
+	summary := fmt.Sprintf("共 %d 本  |  排序 %s  |  过滤 %s  |  第 %d/%d 页", len(books), readableSort(app.bookshelfState.sortMode), readableFilter(app.bookshelfState.filterMode), start/pageSize+1, (len(books)+pageSize-1)/pageSize)
+	if strings.TrimSpace(app.bookshelfState.query) != "" {
+		summary += "  |  搜索 " + app.bookshelfState.query
 	}
 	lines = append(lines, summary)
 	lines = append(lines, bookshelfStatsLine(books))
@@ -70,7 +70,7 @@ func buildBookshelfPanel() string {
 	for i := start; i < end; i++ {
 		book := books[i]
 		prefix := "  "
-		if i == app.shelfIndex {
+		if i == app.bookshelfState.shelfIndex {
 			prefix = "> "
 		}
 		lines = append(lines, prefix+shortenDisplay(book.Title, titleWidth))

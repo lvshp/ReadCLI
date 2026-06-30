@@ -265,11 +265,11 @@ func stripKnownTitleNoise(title string) string {
 }
 
 func visibleBooks() []lib.BookshelfBook {
-	books := lib.FilterBooks(app.bookshelf.Books, app.filterMode)
-	if query := strings.TrimSpace(app.bookshelfQuery); query != "" {
+	books := lib.FilterBooks(app.bookshelf.Books, app.bookshelfState.filterMode)
+	if query := strings.TrimSpace(app.bookshelfState.query); query != "" {
 		books = filterBooksByTitle(books, query)
 	}
-	lib.SortBooks(books, app.sortMode)
+	lib.SortBooks(books, app.bookshelfState.sortMode)
 	return books
 }
 
@@ -292,13 +292,13 @@ func selectedBook() *lib.BookshelfBook {
 	if len(books) == 0 {
 		return nil
 	}
-	if app.shelfIndex < 0 {
-		app.shelfIndex = 0
+	if app.bookshelfState.shelfIndex < 0 {
+		app.bookshelfState.shelfIndex = 0
 	}
-	if app.shelfIndex >= len(books) {
-		app.shelfIndex = len(books) - 1
+	if app.bookshelfState.shelfIndex >= len(books) {
+		app.bookshelfState.shelfIndex = len(books) - 1
 	}
-	book := books[app.shelfIndex]
+	book := books[app.bookshelfState.shelfIndex]
 	return &book
 }
 

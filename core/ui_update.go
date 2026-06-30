@@ -10,7 +10,7 @@ import (
 )
 
 func startUpdateCheck(manual bool) {
-	if app == nil || app.updateMessages == nil {
+	if app == nil || app.updateState.messages == nil {
 		return
 	}
 	if app.currentVersion == "" || !lib.CurrentPlatformSupported() {
@@ -23,7 +23,7 @@ func startUpdateCheck(manual bool) {
 		release, err := lib.FetchLatestRelease(version)
 		if err != nil || release == nil {
 			if manual {
-				app.updateMessages <- updateMessage{
+				app.updateState.messages <- updateMessage{
 					Kind:   updateFailed,
 					Err:    err,
 					Manual: true,
@@ -33,7 +33,7 @@ func startUpdateCheck(manual bool) {
 		}
 		if !lib.ShouldOfferUpdate(version, release.TagName) {
 			if manual {
-				app.updateMessages <- updateMessage{
+				app.updateState.messages <- updateMessage{
 					Kind:   updateCurrent,
 					Manual: true,
 				}
@@ -43,7 +43,7 @@ func startUpdateCheck(manual bool) {
 		if !manual && strings.TrimSpace(skipped) == strings.TrimSpace(release.TagName) {
 			return
 		}
-		app.updateMessages <- updateMessage{
+		app.updateState.messages <- updateMessage{
 			Kind:    updateAvailable,
 			Release: release,
 			Manual:  manual,
@@ -57,25 +57,25 @@ func handleUpdateMessage(message updateMessage) {
 		if message.Release == nil {
 			return
 		}
-		app.updateRelease = message.Release
-		app.updatePromptManual = message.Manual
+		app.updateState.release = message.Release
+		app.updateState.promptManual = message.Manual
 		if app.mode != modeUpdating && app.mode != modeUpdateRestart {
-			app.updateReturnMode = app.mode
-			app.mode = modeUpdatePrompt
+			app.updateState.returnMode = app.mode
+			transitionTo(modeUpdatePrompt)
 		}
 		setStatus(statusInfo, "发现新版本 "+message.Release.TagName)
 	case updateInstalled:
 		if message.Release != nil {
-			app.updateRelease = message.Release
+			app.updateState.release = message.Release
 		}
 		if app.config != nil {
 			app.config.SkippedUpdateVersion = ""
 			saveConfig("保存配置")
 		}
-		app.mode = modeUpdateRestart
+		transitionTo(modeUpdateRestart)
 		setStatus(statusInfo, "更新已安装，退出后重新启动生效")
 	case updateFailed:
-		app.mode = app.updateReturnMode
+		transitionTo(app.updateState.returnMode)
 		if message.Err != nil {
 			setStatus(statusError, "更新失败: "+shorten(message.Err.Error(), 96))
 		} else {
@@ -84,7 +84,7 @@ func handleUpdateMessage(message updateMessage) {
 	case updateCurrent:
 		setStatus(statusInfo, "当前已经是最新版本")
 	case updateProgress:
-		app.updateProgress = message.Progress
+		app.updateState.progress = message.Progress
 		setStatus(statusProgress, updateProgressStatus(message.Progress))
 	}
 }
@@ -99,7 +99,7 @@ func triggerManualUpdateCheck() {
 }
 
 func startUpdateInstall() {
-	if app == nil || app.updateRelease == nil || app.updateMessages == nil {
+	if app == nil || app.updateState.release == nil || app.updateState.messages == nil {
 		return
 	}
 	executablePath, err := os.Executable()
@@ -107,30 +107,30 @@ func startUpdateInstall() {
 		setStatus(statusError, "无法定位当前程序")
 		return
 	}
-	asset := lib.SelectReleaseAsset(app.updateRelease, runtime.GOOS, runtime.GOARCH)
+	asset := lib.SelectReleaseAsset(app.updateState.release, runtime.GOOS, runtime.GOARCH)
 	if asset == nil {
 		setStatus(statusError, "当前平台暂无可用更新包")
 		return
 	}
 
-	app.mode = modeUpdating
-	app.updateProgress = lib.UpdateProgress{Stage: lib.UpdateStageDownload}
-	setStatus(statusProgress, "正在安装更新 "+app.updateRelease.TagName)
+	transitionTo(modeUpdating)
+	app.updateState.progress = lib.UpdateProgress{Stage: lib.UpdateStageDownload}
+	setStatus(statusProgress, "正在安装更新 "+app.updateState.release.TagName)
 	renderUIIfReady()
 
 	go func(version string, release *lib.ReleaseInfo, downloadURL, exePath string) {
 		err := lib.InstallLatestReleaseAssetWithProgress(version, downloadURL, exePath, func(progress lib.UpdateProgress) {
 			select {
-			case app.updateMessages <- updateMessage{Kind: updateProgress, Progress: progress}:
+			case app.updateState.messages <- updateMessage{Kind: updateProgress, Progress: progress}:
 			default:
 			}
 		})
 		if err != nil {
-			app.updateMessages <- updateMessage{Kind: updateFailed, Err: err}
+			app.updateState.messages <- updateMessage{Kind: updateFailed, Err: err}
 			return
 		}
-		app.updateMessages <- updateMessage{Kind: updateInstalled, Release: release}
-	}(app.currentVersion, app.updateRelease, asset.BrowserDownloadURL, executablePath)
+		app.updateState.messages <- updateMessage{Kind: updateInstalled, Release: release}
+	}(app.currentVersion, app.updateState.release, asset.BrowserDownloadURL, executablePath)
 }
 
 func updateProgressStatus(progress lib.UpdateProgress) string {

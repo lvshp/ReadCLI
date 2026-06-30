@@ -11,10 +11,10 @@ func setStatus(kind statusKind, message string) {
 		return
 	}
 	message = strings.TrimSpace(message)
-	app.statusMessage = message
-	app.statusMessageKind = kind
-	app.statusMessageGeneration++
-	app.statusMessageUntil = statusExpiry(kind, message)
+	app.uiState.statusMessage = message
+	app.uiState.statusMessageKind = kind
+	app.uiState.statusMessageGeneration++
+	app.uiState.statusMessageUntil = statusExpiry(kind, message)
 }
 
 func setStatusf(kind statusKind, format string, args ...interface{}) {
@@ -25,10 +25,10 @@ func clearStatus() {
 	if app == nil {
 		return
 	}
-	app.statusMessage = ""
-	app.statusMessageKind = statusInfo
-	app.statusMessageUntil = time.Time{}
-	app.statusMessageGeneration++
+	app.uiState.statusMessage = ""
+	app.uiState.statusMessageKind = statusInfo
+	app.uiState.statusMessageUntil = time.Time{}
+	app.uiState.statusMessageGeneration++
 }
 
 func statusExpiry(kind statusKind, message string) time.Time {

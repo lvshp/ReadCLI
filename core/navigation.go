@@ -12,30 +12,30 @@ import (
 func moveShelf(delta int) {
 	books := visibleBooks()
 	if len(books) == 0 {
-		app.shelfIndex = 0
+		app.bookshelfState.shelfIndex = 0
 		return
 	}
-	app.shelfIndex += delta
-	if app.shelfIndex < 0 {
-		app.shelfIndex = 0
+	app.bookshelfState.shelfIndex += delta
+	if app.bookshelfState.shelfIndex < 0 {
+		app.bookshelfState.shelfIndex = 0
 	}
-	if app.shelfIndex >= len(books) {
-		app.shelfIndex = len(books) - 1
+	if app.bookshelfState.shelfIndex >= len(books) {
+		app.bookshelfState.shelfIndex = len(books) - 1
 	}
 }
 
 func moveBookmarks(delta int) {
 	bookmarks := bookmarksForCurrentBook()
 	if len(bookmarks) == 0 {
-		app.bookmarkIndex = 0
+		app.readingState.bookmarkIndex = 0
 		return
 	}
-	app.bookmarkIndex += delta
-	if app.bookmarkIndex < 0 {
-		app.bookmarkIndex = 0
+	app.readingState.bookmarkIndex += delta
+	if app.readingState.bookmarkIndex < 0 {
+		app.readingState.bookmarkIndex = 0
 	}
-	if app.bookmarkIndex >= len(bookmarks) {
-		app.bookmarkIndex = len(bookmarks) - 1
+	if app.readingState.bookmarkIndex >= len(bookmarks) {
+		app.readingState.bookmarkIndex = len(bookmarks) - 1
 	}
 }
 
@@ -44,11 +44,11 @@ func openSelectedBookmark() {
 	if len(bookmarks) == 0 {
 		return
 	}
-	if app.bookmarkIndex >= len(bookmarks) {
-		app.bookmarkIndex = len(bookmarks) - 1
+	if app.readingState.bookmarkIndex >= len(bookmarks) {
+		app.readingState.bookmarkIndex = len(bookmarks) - 1
 	}
-	app.reader.Goto(bookmarks[app.bookmarkIndex].Position)
-	app.mode = modeReading
+	app.reader.Goto(bookmarks[app.readingState.bookmarkIndex].Position)
+	transitionTo(modeReading)
 	syncCurrentBookState()
 	setStatus(statusInfo, "已跳转到书签")
 }
@@ -58,34 +58,34 @@ func deleteSelectedBookmark() {
 	if len(bookmarks) == 0 {
 		return
 	}
-	if app.bookmarkIndex >= len(bookmarks) {
-		app.bookmarkIndex = len(bookmarks) - 1
+	if app.readingState.bookmarkIndex >= len(bookmarks) {
+		app.readingState.bookmarkIndex = len(bookmarks) - 1
 	}
-	list := append([]lib.Bookmark(nil), bookmarks[:app.bookmarkIndex]...)
-	list = append(list, bookmarks[app.bookmarkIndex+1:]...)
+	list := append([]lib.Bookmark(nil), bookmarks[:app.readingState.bookmarkIndex]...)
+	list = append(list, bookmarks[app.readingState.bookmarkIndex+1:]...)
 	app.bookmarks.Books[app.currentFile] = list
 	saveBookmarks("保存书签")
-	if app.bookmarkIndex >= len(list) && len(list) > 0 {
-		app.bookmarkIndex = len(list) - 1
+	if app.readingState.bookmarkIndex >= len(list) && len(list) > 0 {
+		app.readingState.bookmarkIndex = len(list) - 1
 	}
 	setStatus(statusInfo, "书签已删除")
 }
 
 func displayHelp() {
-	app.showHelp = !app.showHelp
-	app.showProgress = false
-	app.showReadingQuickHelp = false
+	app.readingState.showHelp = !app.readingState.showHelp
+	app.readingState.showProgress = false
+	app.readingState.showReadingQuickHelp = false
 }
 
 func displayReadingQuickHelp() {
-	app.showReadingQuickHelp = !app.showReadingQuickHelp
-	app.showHelp = false
-	app.showProgress = false
+	app.readingState.showReadingQuickHelp = !app.readingState.showReadingQuickHelp
+	app.readingState.showHelp = false
+	app.readingState.showProgress = false
 }
 
 func displayProgress() {
-	app.showProgress = !app.showProgress
-	app.showHelp = false
+	app.readingState.showProgress = !app.readingState.showProgress
+	app.readingState.showHelp = false
 }
 
 func displayTOC() {
@@ -93,28 +93,28 @@ func displayTOC() {
 		return
 	}
 	if app.mode == modeTOC {
-		app.mode = modeReading
-		app.tocNumber = ""
+		transitionTo(modeReading)
+		app.readingState.tocNumber = ""
 		return
 	}
-	app.mode = modeTOC
-	app.showReadingQuickHelp = false
-	app.tocIndex = app.reader.CurrentChapterIndex()
-	app.tocNumber = ""
+	transitionTo(modeTOC)
+	app.readingState.showReadingQuickHelp = false
+	app.readingState.tocIndex = app.reader.CurrentChapterIndex()
+	app.readingState.tocNumber = ""
 }
 
 func appendTOCNumber(digit string) {
-	app.tocNumber += digit
+	app.readingState.tocNumber += digit
 	if index, ok := parseTOCNumber(); ok {
-		app.tocIndex = index
+		app.readingState.tocIndex = index
 	}
 }
 
 func parseTOCNumber() (int, bool) {
-	if app.tocNumber == "" {
+	if app.readingState.tocNumber == "" {
 		return 0, false
 	}
-	num, err := strconv.Atoi(app.tocNumber)
+	num, err := strconv.Atoi(app.readingState.tocNumber)
 	if err != nil || num <= 0 {
 		return 0, false
 	}
@@ -122,23 +122,19 @@ func parseTOCNumber() (int, bool) {
 }
 
 func updateTOCSelection(offset int) {
-	app.tocIndex += offset
 	pageSize := tocPageSize()
-	total := 0
-	if app.reader != nil {
-		total = app.reader.CurrentChapterIndex()
-		_ = total
-	}
-	if app.tocIndex < 0 {
-		app.tocIndex = 0
-	}
-	if app.tocIndex < 0 {
-		app.tocIndex = 0
-	}
 	if pageSize < 1 {
 		pageSize = 1
 	}
-	app.tocNumber = ""
+	total := 1
+	if app.reader != nil {
+		toc := strings.Split(strings.TrimSpace(app.reader.GetTOC()), "\n")
+		if count := len(toc) - 1; count > 0 {
+			total = count
+		}
+	}
+	app.readingState.tocIndex = clamp(app.readingState.tocIndex+offset, 0, total-1)
+	app.readingState.tocNumber = ""
 }
 
 func openSelectedTOCChapter() {
@@ -146,11 +142,11 @@ func openSelectedTOCChapter() {
 		return
 	}
 	if index, ok := parseTOCNumber(); ok {
-		app.tocIndex = index
+		app.readingState.tocIndex = index
 	}
-	app.reader.GotoChapter(app.tocIndex)
-	app.mode = modeReading
-	app.tocNumber = ""
+	app.reader.GotoChapter(app.readingState.tocIndex)
+	transitionTo(modeReading)
+	app.readingState.tocNumber = ""
 	setStatus(statusInfo, "已跳转到章节")
 	syncCurrentBookState()
 }
@@ -160,8 +156,8 @@ func moveReading(delta int) {
 		return
 	}
 	app.reader.Goto(app.reader.CurrentPos() + delta)
-	app.showHelp = false
-	app.showProgress = false
+	app.readingState.showHelp = false
+	app.readingState.showProgress = false
 	setStatusf(statusInfo, "阅读位置 %d/%d", app.reader.CurrentPos()+1, app.reader.Total())
 	syncCurrentBookState()
 }
@@ -193,8 +189,8 @@ func saveBookmark() {
 }
 
 func openBookmarks() {
-	app.mode = modeBookmarks
-	app.bookmarkIndex = 0
+	transitionTo(modeBookmarks)
+	app.readingState.bookmarkIndex = 0
 	setStatus(statusInfo, "已打开书签列表")
 }
 
@@ -202,52 +198,52 @@ func runSearch() {
 	if app.reader == nil {
 		return
 	}
-	app.searchQuery = strings.TrimSpace(app.inputValue)
+	app.readingState.searchQuery = strings.TrimSpace(app.uiState.input.value)
 	resetInputState()
-	app.mode = modeReading
-	if app.searchQuery == "" {
+	transitionTo(modeReading)
+	if app.readingState.searchQuery == "" {
 		setStatus(statusInfo, "搜索已取消")
 		return
 	}
-	pos, ok := app.reader.Search(app.searchQuery, min(app.reader.CurrentPos()+1, app.reader.Total()-1), true)
+	pos, ok := app.reader.Search(app.readingState.searchQuery, min(app.reader.CurrentPos()+1, app.reader.Total()-1), true)
 	if !ok {
-		pos, ok = app.reader.Search(app.searchQuery, 0, true)
+		pos, ok = app.reader.Search(app.readingState.searchQuery, 0, true)
 	}
 	if !ok {
-		setStatus(statusError, "未找到关键字: "+app.searchQuery)
+		setStatus(statusError, "未找到关键字: "+app.readingState.searchQuery)
 		return
 	}
 	app.reader.Goto(pos)
-	app.lastSearchIndex = pos
+	app.readingState.lastSearchIndex = pos
 	setStatus(statusInfo, "已跳转到搜索结果")
 	syncCurrentBookState()
 }
 
 func startBookshelfSearch() {
-	setMode(modeBookshelfSearchInput)
-	app.inputValue = app.bookshelfQuery
-	app.inputCursor = len([]rune(app.inputValue))
+	transitionTo(modeBookshelfSearchInput)
+	app.uiState.input.value = app.bookshelfState.query
+	app.uiState.input.cursor = len([]rune(app.uiState.input.value))
 	setStatus(statusInfo, "输入书名关键字过滤书架")
 }
 
 func runBookshelfSearch() {
-	app.bookshelfQuery = strings.TrimSpace(app.inputValue)
+	app.bookshelfState.query = strings.TrimSpace(app.uiState.input.value)
 	resetInputState()
-	app.mode = modeHome
-	app.shelfIndex = 0
-	if app.bookshelfQuery == "" {
+	transitionTo(modeHome)
+	app.bookshelfState.shelfIndex = 0
+	if app.bookshelfState.query == "" {
 		setStatus(statusInfo, "书架搜索已清空")
 		return
 	}
-	setStatus(statusInfo, "书架搜索: "+app.bookshelfQuery)
+	setStatus(statusInfo, "书架搜索: "+app.bookshelfState.query)
 }
 
 func cancelBookshelfSearch() {
-	if strings.TrimSpace(app.bookshelfQuery) == "" {
+	if strings.TrimSpace(app.bookshelfState.query) == "" {
 		return
 	}
-	app.bookshelfQuery = ""
-	app.shelfIndex = 0
+	app.bookshelfState.query = ""
+	app.bookshelfState.shelfIndex = 0
 	setStatus(statusInfo, "书架搜索已清空")
 }
 
@@ -255,7 +251,7 @@ func startReadingJumpInput() {
 	if app.reader == nil {
 		return
 	}
-	setMode(modeReadingJumpInput)
+	transitionTo(modeReadingJumpInput)
 	setStatus(statusInfo, "输入章节号或百分比，例如 128 / 50%")
 }
 
@@ -263,9 +259,9 @@ func runReadingJump() {
 	if app.reader == nil {
 		return
 	}
-	target := strings.TrimSpace(app.inputValue)
+	target := strings.TrimSpace(app.uiState.input.value)
 	resetInputState()
-	app.mode = modeReading
+	transitionTo(modeReading)
 	if target == "" {
 		setStatus(statusInfo, "跳转已取消")
 		return
@@ -284,7 +280,7 @@ func runReadingJump() {
 			pos = int(math.Round(percent / 100 * float64(total-1)))
 		}
 		app.reader.Goto(pos)
-		app.showReadingQuickHelp = false
+		app.readingState.showReadingQuickHelp = false
 		setStatusf(statusInfo, "已跳转到 %.0f%%", percent)
 		syncCurrentBookState()
 		return
@@ -296,13 +292,13 @@ func runReadingJump() {
 		return
 	}
 	app.reader.GotoChapter(chapter - 1)
-	app.showReadingQuickHelp = false
+	app.readingState.showReadingQuickHelp = false
 	setStatusf(statusInfo, "已跳转到第 %d 章", chapter)
 	syncCurrentBookState()
 }
 
 func jumpSearch(forward bool) {
-	if app.reader == nil || strings.TrimSpace(app.searchQuery) == "" {
+	if app.reader == nil || strings.TrimSpace(app.readingState.searchQuery) == "" {
 		setStatus(statusError, "没有可继续跳转的搜索结果")
 		return
 	}
@@ -312,9 +308,9 @@ func jumpSearch(forward bool) {
 		if start >= app.reader.Total() {
 			start = 0
 		}
-		pos, ok := app.reader.Search(app.searchQuery, start, true)
+		pos, ok := app.reader.Search(app.readingState.searchQuery, start, true)
 		if !ok {
-			pos, ok = app.reader.Search(app.searchQuery, 0, true)
+			pos, ok = app.reader.Search(app.readingState.searchQuery, 0, true)
 			if !ok {
 				setStatus(statusError, "未找到更多结果")
 				return
@@ -326,9 +322,9 @@ func jumpSearch(forward bool) {
 		if start < 0 {
 			start = app.reader.Total() - 1
 		}
-		pos, ok := app.reader.Search(app.searchQuery, start, false)
+		pos, ok := app.reader.Search(app.readingState.searchQuery, start, false)
 		if !ok {
-			pos, ok = app.reader.Search(app.searchQuery, app.reader.Total()-1, false)
+			pos, ok = app.reader.Search(app.readingState.searchQuery, app.reader.Total()-1, false)
 			if !ok {
 				setStatus(statusError, "未找到更多结果")
 				return
@@ -340,36 +336,46 @@ func jumpSearch(forward bool) {
 	syncCurrentBookState()
 }
 
-func setMode(m mode) {
+func transitionTo(m mode) {
 	app.mode = m
 	resetInputState()
-	app.rowNumber = ""
+	app.readingState.rowNumber = ""
 	if m != modeReading {
-		app.showReadingQuickHelp = false
+		app.readingState.showReadingQuickHelp = false
 	}
 }
 
 func cycleSort() {
-	switch app.sortMode {
+	switch app.bookshelfState.sortMode {
 	case "recent":
-		app.sortMode = "imported"
+		app.bookshelfState.sortMode = "imported"
 	case "imported":
-		app.sortMode = "title"
+		app.bookshelfState.sortMode = "title"
 	default:
-		app.sortMode = "recent"
+		app.bookshelfState.sortMode = "recent"
 	}
-	setStatus(statusInfo, "排序已切换为 "+app.sortMode)
+	setStatus(statusInfo, "排序已切换为 "+app.bookshelfState.sortMode)
 }
 
 func cycleFilter() {
 	options := []string{"all", "epub", "txt", "unread", "reading", "finished"}
 	for i, opt := range options {
-		if opt == app.filterMode {
-			app.filterMode = options[(i+1)%len(options)]
-			app.shelfIndex = 0
-			setStatus(statusInfo, "过滤已切换为 "+app.filterMode)
+		if opt == app.bookshelfState.filterMode {
+			app.bookshelfState.filterMode = options[(i+1)%len(options)]
+			app.bookshelfState.shelfIndex = 0
+			setStatus(statusInfo, "过滤已切换为 "+app.bookshelfState.filterMode)
 			return
 		}
 	}
-	app.filterMode = "all"
+	app.bookshelfState.filterMode = "all"
+}
+
+func clamp(value, minValue, maxValue int) int {
+	if value < minValue {
+		return minValue
+	}
+	if value > maxValue {
+		return maxValue
+	}
+	return value
 }

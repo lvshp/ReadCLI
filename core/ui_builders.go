@@ -70,10 +70,10 @@ func buildLeftPanel(th theme) string {
 			"  u       检查更新",
 			"",
 			"[Sort](fg:yellow,mod:bold)",
-			"  " + readableSort(app.sortMode),
+			"  " + readableSort(app.bookshelfState.sortMode),
 			"",
 			"[Filter](fg:green,mod:bold)",
-			"  " + readableFilter(app.filterMode),
+			"  " + readableFilter(app.bookshelfState.filterMode),
 			"",
 			"[Theme](fg:cyan,mod:bold)",
 			"  " + th.Name,
@@ -173,7 +173,7 @@ func buildRightPanel(th theme) string {
 	lines = append(lines, "")
 	lines = append(lines, buildDetailBlock("总行数", fmt.Sprintf("%d lines", total), width)...)
 	lines = append(lines, "", "[Search](fg:yellow,mod:bold)", "")
-	lines = append(lines, buildDetailBlock("查询", emptyFallback(app.searchQuery, "无"), width)...)
+	lines = append(lines, buildDetailBlock("查询", emptyFallback(app.readingState.searchQuery, "无"), width)...)
 	return strings.Join(lines, "\n")
 }
 
@@ -181,14 +181,14 @@ func buildFooter() string {
 	if compactReadingUI() {
 		return compactReadingStatusLine()
 	}
-	elapsed := time.Since(app.sessionStart).Round(time.Minute)
+	elapsed := time.Since(app.uiState.sessionStart).Round(time.Minute)
 	tag := currentTheme().FooterTag
 	version := strings.TrimSpace(app.currentVersion)
 	if version == "" {
 		version = "dev"
 	}
 	line1 := fmt.Sprintf("[%s](fg:black,bg:green,mod:bold)  utf-8  session [%s](fg:yellow)  theme [%s](fg:cyan)  version [%s](fg:yellow)  [%s](fg:green)",
-		tag, elapsed, app.config.Theme, version, app.statusMessage)
+		tag, elapsed, app.config.Theme, version, app.uiState.statusMessage)
 	switch app.mode {
 	case modeHome:
 		return line1 + "\n[↑/↓](fg:cyan):选择  [→/Enter](fg:cyan):打开  [/](fg:cyan):搜书架  [i](fg:cyan):导入  [o/r](fg:cyan):排序/过滤  [x](fg:cyan):移除  [T](fg:cyan):主题  [u](fg:cyan):更新  [q](fg:red):退出"
@@ -206,7 +206,7 @@ func buildFooter() string {
 		return line1 + "\n输入章节号或百分比，例如 128 / 50%，Enter 跳转，Esc 取消"
 	case modeImportInput:
 		scope := "当前层"
-		if app.importRecursive {
+		if app.uiState.input.importRecursive {
 			scope = "递归"
 		}
 		return line1 + "\n输入文件或文件夹路径，Tab 补全，Ctrl-r 切换扫描范围(" + scope + ")，Esc 取消"
@@ -272,10 +272,10 @@ func buildMainTitle() string {
 }
 
 func buildMainPanel() string {
-	if app.showHelp {
+	if app.readingState.showHelp {
 		return buildHelpPanel()
 	}
-	if app.showProgress && app.reader != nil {
+	if app.readingState.showProgress && app.reader != nil {
 		return app.reader.GetProgress()
 	}
 	switch app.mode {
@@ -283,7 +283,7 @@ func buildMainPanel() string {
 		return buildBookshelfPanel()
 	case modeImportInput:
 		scopeLabel := "当前层"
-		if app.importRecursive {
+		if app.uiState.input.importRecursive {
 			scopeLabel = "递归子目录"
 		}
 		lines := []string{
@@ -291,20 +291,20 @@ func buildMainPanel() string {
 			"",
 			"请输入 txt / epub 文件路径，或一个文件夹路径：",
 			"",
-			renderInputWithCursor(app.inputValue, app.inputCursor),
+			renderInputWithCursor(app.uiState.input.value, app.uiState.input.cursor),
 			"",
 			"支持左右移动、删除、Tab 补全、拖入文件/目录，以及目录批量导入。",
 			"当前扫描范围：" + scopeLabel,
 			"按 Ctrl-r 切换当前层 / 递归子目录。",
 		}
-		if len(app.inputHints) > 0 {
+		if len(app.uiState.input.hints) > 0 {
 			pageSize := importHintPageSize()
 			start, end, page, totalPages := importHintPageBounds(pageSize)
 			lines = append(lines, "", fmt.Sprintf("候选路径：第 %d/%d 页", page, totalPages))
 			for i := start; i < end; i++ {
-				hint := app.inputHints[i]
+				hint := app.uiState.input.hints[i]
 				prefix := "  "
-				if i == app.inputHintIndex {
+				if i == app.uiState.input.hintIndex {
 					prefix = "> "
 				}
 				lines = append(lines, prefix+shorten(hint, 72))
@@ -313,21 +313,21 @@ func buildMainPanel() string {
 		}
 		return strings.Join(lines, "\n")
 	case modeDeleteConfirm:
-		return fmt.Sprintf("删除确认\n\n目标书籍：%s\n\n按 y 仅从书架移除。\n按 D 从书架移除并删除本地文件。\n按 Esc 取消。", app.deleteTargetTitle)
+		return fmt.Sprintf("删除确认\n\n目标书籍：%s\n\n按 y 仅从书架移除。\n按 D 从书架移除并删除本地文件。\n按 Esc 取消。", app.bookshelfState.deleteTargetTitle)
 	case modeTOC:
 		return tocStatusText()
 	case modeBookmarks:
 		return buildBookmarksPanel()
 	case modeSearchInput:
-		return "搜索\n\n请输入关键字并回车执行：\n\n" + renderInputWithCursor(app.inputValue, app.inputCursor)
+		return "搜索\n\n请输入关键字并回车执行：\n\n" + renderInputWithCursor(app.uiState.input.value, app.uiState.input.cursor)
 	case modeBookshelfSearchInput:
-		return "书架搜索\n\n请输入书名关键字并回车过滤：\n\n" + renderInputWithCursor(app.inputValue, app.inputCursor) + "\n\nEsc 清空搜索并返回书架。"
+		return "书架搜索\n\n请输入书名关键字并回车过滤：\n\n" + renderInputWithCursor(app.uiState.input.value, app.uiState.input.cursor) + "\n\nEsc 清空搜索并返回书架。"
 	case modeReadingJumpInput:
-		return "跳转\n\n输入章节号或百分比：\n\n" + renderInputWithCursor(app.inputValue, app.inputCursor) + "\n\n示例：128 或 50%。"
+		return "跳转\n\n输入章节号或百分比：\n\n" + renderInputWithCursor(app.uiState.input.value, app.uiState.input.cursor) + "\n\n示例：128 或 50%。"
 	case modeReadingSettings:
 		return buildReadingSettingsPanel()
 	case modeReadingColorInput:
-		return "阅读颜色\n\n请输入字体颜色：\n\n" + renderInputWithCursor(app.inputValue, app.inputCursor) + "\n\n支持 #RRGGBB、#RGB 或 R,G,B。"
+		return "阅读颜色\n\n请输入字体颜色：\n\n" + renderInputWithCursor(app.uiState.input.value, app.uiState.input.cursor) + "\n\n支持 #RRGGBB、#RGB 或 R,G,B。"
 	case modeUpdatePrompt:
 		return buildUpdatePromptPanel()
 	case modeUpdating:
@@ -344,10 +344,10 @@ func buildMainPanel() string {
 
 func buildReadingPanel() string {
 	text := app.reader.CurrentView(readingVisibleSourceLines())
-	if app.showReadingQuickHelp {
+	if app.readingState.showReadingQuickHelp {
 		text = withReadingQuickHelp(text)
 	}
-	return formatReadingPanel(highlightSearchMatches(text, app.searchQuery))
+	return formatReadingPanel(highlightSearchMatches(text, app.readingState.searchQuery))
 }
 
 func withReadingQuickHelp(text string) string {

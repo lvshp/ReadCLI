@@ -30,24 +30,34 @@ func Run(initialFile string, requestedLines int, version string) {
 	}
 
 	app = &appState{
-		mode:            modeHome,
-		config:          cfg,
-		bookshelf:       shelf,
-		bookmarks:       marks,
-		progress:        progress,
-		readerCache:     map[string]cachedReader{},
-		themeOrder:      []string{"vscode", "jetbrains", "ops-console"},
-		sortMode:        "recent",
-		filterMode:      "all",
-		importRecursive: false,
-		shelfIndex:      cfg.SelectedBookshelf,
-		lastSearchIndex: -1,
-		sessionStart:    time.Now(),
-		showBorder:      cfg.ShowBorder,
-		compactMode:     cfg.CompactMode,
-		displayLines:    cfg.DisplayLines,
-		currentVersion:  strings.TrimSpace(version),
-		updateMessages:  make(chan updateMessage, 16),
+		mode:        modeHome,
+		config:      cfg,
+		bookshelf:   shelf,
+		bookmarks:   marks,
+		progress:    progress,
+		readerCache: map[string]cachedReader{},
+		themeOrder:  []string{"vscode", "jetbrains", "ops-console"},
+		bookshelfState: bookshelfState{
+			sortMode:   "recent",
+			filterMode: "all",
+			shelfIndex: cfg.SelectedBookshelf,
+		},
+		readingState: readingState{
+			lastSearchIndex: -1,
+			compactMode:     cfg.CompactMode,
+			displayLines:    cfg.DisplayLines,
+		},
+		updateState: updateState{
+			messages: make(chan updateMessage, 16),
+		},
+		uiState: uiState{
+			sessionStart: time.Now(),
+			showBorder:   cfg.ShowBorder,
+			input: inputState{
+				importRecursive: false,
+			},
+		},
+		currentVersion: strings.TrimSpace(version),
 	}
 
 	if app.bookshelf == nil {
@@ -100,38 +110,7 @@ func Run(initialFile string, requestedLines int, version string) {
 
 		wasCompact := compactReadingUI()
 
-		switch app.mode {
-		case modeHome:
-			handleHomeEvent(id)
-		case modeReading:
-			handleReadingEvent(id)
-		case modeTOC:
-			handleTOCEvent(id)
-		case modeBookmarks:
-			handleBookmarkEvent(id)
-		case modeSearchInput:
-			handleTextInputEvent(id, runSearch)
-		case modeBookshelfSearchInput:
-			handleTextInputEvent(id, runBookshelfSearch)
-		case modeReadingJumpInput:
-			handleTextInputEvent(id, runReadingJump)
-		case modeImportInput:
-			handleTextInputEvent(id, importBook)
-		case modeReadingSettings:
-			handleReadingSettingsEvent(id)
-		case modeReadingColorInput:
-			handleTextInputEvent(id, applyReadingTextColorInput)
-		case modeDeleteConfirm:
-			handleDeleteConfirmEvent(id)
-		case modeUpdatePrompt:
-			if !scrollUpdatePrompt(id) {
-				handleUpdatePromptEvent(id)
-			}
-		case modeUpdating:
-			handleUpdatingEvent(id)
-		case modeUpdateRestart:
-			handleUpdateRestartEvent(id)
-		}
+		dispatchEvent(id)
 
 		if app.quit {
 			tApp.Stop()
@@ -150,7 +129,7 @@ func Run(initialFile string, requestedLines int, version string) {
 	if initialFile != "" {
 		if err := openBook(initialFile); err != nil {
 			setStatus(statusError, err.Error())
-			app.mode = modeHome
+			transitionTo(modeHome)
 		}
 		refreshChrome()
 	}
@@ -159,7 +138,7 @@ func Run(initialFile string, requestedLines int, version string) {
 
 	// Start a goroutine to handle update messages
 	go func() {
-		for msg := range app.updateMessages {
+		for msg := range app.updateState.messages {
 			queueUIUpdate(func() {
 				handleUpdateMessage(msg)
 				refreshChrome()

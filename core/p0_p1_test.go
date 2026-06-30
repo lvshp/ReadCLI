@@ -65,9 +65,11 @@ func TestVisibleBooksFiltersByTitleAndKeepsSort(t *testing.T) {
 			{Title: "Earth", Path: "/mars/earth.epub", Format: "epub"},
 			{Title: "A Mars", Path: "/books/a.epub", Format: "epub"},
 		}},
-		filterMode:     "all",
-		sortMode:       "title",
-		bookshelfQuery: "mars",
+		bookshelfState: bookshelfState{
+			filterMode: "all",
+			sortMode:   "title",
+			query:      "mars",
+		},
 	}
 
 	books := visibleBooks()
@@ -95,9 +97,11 @@ func TestCompactReadingStatusLineIncludesChapterPercentAndPosition(t *testing.T)
 
 func TestHomeInspectorDoesNotExposeCompactMode(t *testing.T) {
 	app = &appState{
-		mode:        modeHome,
-		compactMode: true,
-		config:      &lib.Config{Theme: "vscode"},
+		mode:   modeHome,
+		config: &lib.Config{Theme: "vscode"},
+		readingState: readingState{
+			compactMode: true,
+		},
 		bookshelf: &lib.BookshelfStore{Books: []lib.BookshelfBook{
 			{
 				Title:           "一本书",
@@ -107,8 +111,10 @@ func TestHomeInspectorDoesNotExposeCompactMode(t *testing.T) {
 				CurrentChapter:  "第一章",
 			},
 		}},
-		filterMode: "all",
-		sortMode:   "title",
+		bookshelfState: bookshelfState{
+			filterMode: "all",
+			sortMode:   "title",
+		},
 	}
 
 	panel := buildRightPanel(currentTheme())
@@ -119,9 +125,11 @@ func TestHomeInspectorDoesNotExposeCompactMode(t *testing.T) {
 
 func TestFormatCompactReadingPanelCentersNarrowTextBlock(t *testing.T) {
 	app = &appState{
-		mode:         modeReading,
-		compactMode:  true,
-		contentWidth: 40,
+		mode: modeReading,
+		readingState: readingState{
+			compactMode:  true,
+			contentWidth: 40,
+		},
 		config: &lib.Config{
 			ReadingLineSpacing: 1,
 		},
@@ -139,16 +147,18 @@ func TestFormatCompactReadingPanelCentersNarrowTextBlock(t *testing.T) {
 func TestRunReadingJumpSupportsPercentAndChapter(t *testing.T) {
 	reader := &fakeReader{total: 101, chapter: "开始"}
 	app = &appState{
-		reader:     reader,
-		inputValue: "50%",
-		mode:       modeReadingJumpInput,
+		reader: reader,
+		mode:   modeReadingJumpInput,
+		uiState: uiState{
+			input: inputState{value: "50%"},
+		},
 	}
 	runReadingJump()
 	if reader.pos != 50 {
 		t.Fatalf("percent jump pos = %d, want 50", reader.pos)
 	}
 
-	app.inputValue = "128"
+	app.uiState.input.value = "128"
 	app.mode = modeReadingJumpInput
 	runReadingJump()
 	if reader.gotoChapter != 127 {
@@ -173,13 +183,15 @@ func TestStatusExpiryUsesKind(t *testing.T) {
 
 func TestEscapeFromBookshelfSearchKeepsSpecificStatus(t *testing.T) {
 	app = &appState{
-		mode:           modeBookshelfSearchInput,
-		bookshelfQuery: "mars",
+		mode: modeBookshelfSearchInput,
+		bookshelfState: bookshelfState{
+			query: "mars",
+		},
 	}
 
 	handleTextInputEvent("<Escape>", nil)
-	if app.statusMessage != "书架搜索已取消" {
-		t.Fatalf("statusMessage = %q, want 书架搜索已取消", app.statusMessage)
+	if app.uiState.statusMessage != "书架搜索已取消" {
+		t.Fatalf("statusMessage = %q, want 书架搜索已取消", app.uiState.statusMessage)
 	}
 }
 
@@ -189,7 +201,7 @@ func TestEscapeFromReadingJumpKeepsSpecificStatus(t *testing.T) {
 	}
 
 	handleTextInputEvent("<Escape>", nil)
-	if app.statusMessage != "已取消跳转" {
-		t.Fatalf("statusMessage = %q, want 已取消跳转", app.statusMessage)
+	if app.uiState.statusMessage != "已取消跳转" {
+		t.Fatalf("statusMessage = %q, want 已取消跳转", app.uiState.statusMessage)
 	}
 }

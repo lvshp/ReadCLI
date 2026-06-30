@@ -7,7 +7,7 @@ import (
 )
 
 func removeSelectedBook(deleteFile bool) {
-	path := app.deleteTargetPath
+	path := app.bookshelfState.deleteTargetPath
 	if path == "" {
 		return
 	}
@@ -18,9 +18,9 @@ func removeSelectedBook(deleteFile bool) {
 		}
 	}
 	removeBookState(path)
-	app.mode = modeHome
-	app.deleteTargetPath = ""
-	app.deleteTargetTitle = ""
+	transitionTo(modeHome)
+	app.bookshelfState.deleteTargetPath = ""
+	app.bookshelfState.deleteTargetTitle = ""
 	setStatus(statusInfo, "已移出书架")
 	if deleteFile {
 		setStatus(statusInfo, "已删除本地文件并移出书架")
@@ -44,7 +44,7 @@ func prepareDeleteSelectedBook() {
 		setStatus(statusError, "没有可删除的书籍")
 		return
 	}
-	app.deleteTargetPath = book.Path
-	app.deleteTargetTitle = book.Title
-	app.mode = modeDeleteConfirm
+	app.bookshelfState.deleteTargetPath = book.Path
+	app.bookshelfState.deleteTargetTitle = book.Title
+	transitionTo(modeDeleteConfirm)
 }

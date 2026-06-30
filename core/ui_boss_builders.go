@@ -117,7 +117,7 @@ func buildBossRightPanel() string {
 }
 
 func buildBossFooter() string {
-	elapsed := time.Since(app.sessionStart).Round(time.Minute)
+	elapsed := time.Since(app.uiState.sessionStart).Round(time.Minute)
 	return fmt.Sprintf("[MONITOR](fg:black,bg:green,mod:bold)  uptime [%s](fg:yellow)  state [running](fg:green)  window [runtime](fg:cyan)  [%s](fg:white)\n[Escaped view active](fg:yellow)  [b](fg:cyan):return  [q](fg:red):shelf",
 		elapsed, time.Now().Format("2006-01-02 15:04:05"))
 }

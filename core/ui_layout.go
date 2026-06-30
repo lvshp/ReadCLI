@@ -78,10 +78,10 @@ func applyLayoutWithReflow(termWidth, termHeight int, reflow bool) {
 
 	nextContentWidth := readingContentWidth(mainWidth)
 	if reflow {
-		app.contentWidth = nextContentWidth
+		app.readingState.contentWidth = nextContentWidth
 	}
 	if reflow && app.reader != nil {
-		app.reader.Reflow(app.contentWidth)
+		app.reader.Reflow(app.readingState.contentWidth)
 	}
 
 	root.ResizeItem(header, headerHeight, 0)
@@ -104,5 +104,5 @@ func applyLayoutWithReflow(termWidth, termHeight int, reflow bool) {
 }
 
 func compactReadingUI() bool {
-	return app != nil && app.compactMode && app.mode == modeReading && !app.bossKey
+	return app != nil && app.readingState.compactMode && app.mode == modeReading && !app.bossKey
 }

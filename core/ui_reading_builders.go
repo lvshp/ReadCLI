@@ -10,17 +10,17 @@ func buildBookmarksPanel() string {
 	if len(bookmarks) == 0 {
 		return "当前书没有书签。\n\n按 s 保存一个书签。"
 	}
-	if app.bookmarkIndex < 0 {
-		app.bookmarkIndex = 0
+	if app.readingState.bookmarkIndex < 0 {
+		app.readingState.bookmarkIndex = 0
 	}
-	if app.bookmarkIndex >= len(bookmarks) {
-		app.bookmarkIndex = len(bookmarks) - 1
+	if app.readingState.bookmarkIndex >= len(bookmarks) {
+		app.readingState.bookmarkIndex = len(bookmarks) - 1
 	}
 	var lines []string
 	lines = append(lines, "书签列表", "")
 	for i, mark := range bookmarks {
 		prefix := "  "
-		if i == app.bookmarkIndex {
+		if i == app.readingState.bookmarkIndex {
 			prefix = "> "
 		}
 		lines = append(lines, fmt.Sprintf("%s%s | %s", prefix, shorten(mark.Chapter, 16), shorten(mark.Snippet, 36)))
@@ -72,11 +72,11 @@ func buildReadingSettingsPanel() string {
 	if len(items) == 0 {
 		return "阅读设置不可用"
 	}
-	if app.settingsIndex < 0 {
-		app.settingsIndex = 0
+	if app.readingState.settingsIndex < 0 {
+		app.readingState.settingsIndex = 0
 	}
-	if app.settingsIndex >= len(items) {
-		app.settingsIndex = len(items) - 1
+	if app.readingState.settingsIndex >= len(items) {
+		app.readingState.settingsIndex = len(items) - 1
 	}
 	lines := []string{
 		"阅读设置",
@@ -86,7 +86,7 @@ func buildReadingSettingsPanel() string {
 	}
 	for i, item := range items {
 		prefix := "  "
-		if i == app.settingsIndex {
+		if i == app.readingState.settingsIndex {
 			prefix = "> "
 		}
 		lines = append(lines, fmt.Sprintf("%s%-10s %s", prefix, item.Label, item.Value))
@@ -118,17 +118,17 @@ func tocStatusText() string {
 	if app.reader == nil {
 		return ""
 	}
-	text := app.reader.GetTOCWithSelection(app.tocIndex, tocPageSize())
-	if app.tocNumber == "" {
+	text := app.reader.GetTOCWithSelection(app.readingState.tocIndex, tocPageSize())
+	if app.readingState.tocNumber == "" {
 		return text
 	}
-	return text + "\nOpen chapter: " + app.tocNumber
+	return text + "\nOpen chapter: " + app.readingState.tocNumber
 }
 
 func tocPageSize() int {
 	if mainContentHeight > 0 {
 		reservedLines := 4
-		if app.tocNumber != "" {
+		if app.readingState.tocNumber != "" {
 			reservedLines++
 		}
 		available := mainContentHeight - reservedLines
@@ -185,22 +185,22 @@ func compactReadingContentWidth(width int) int {
 }
 
 func readingVisibleSourceLines() int {
-	if app == nil || app.displayLines < 1 {
+	if app == nil || app.readingState.displayLines < 1 {
 		return 1
 	}
 	maxLines := readingMaxSourceLines()
 	if maxLines < 1 {
 		maxLines = 1
 	}
-	if app.displayLines > maxLines {
+	if app.readingState.displayLines > maxLines {
 		return maxLines
 	}
-	return app.displayLines
+	return app.readingState.displayLines
 }
 
 func readingMaxSourceLines() int {
 	if mainContentHeight == 0 {
-		return max(1, app.displayLines)
+		return max(1, app.readingState.displayLines)
 	}
 	available := mainContentHeight - readingMarginTop() - readingMarginBottom()
 	if available < 1 {
@@ -245,7 +245,7 @@ func formatCompactReadingPanel(text string) string {
 		return ""
 	}
 	lines := strings.Split(text, "\n")
-	contentWidth := app.contentWidth
+	contentWidth := app.readingState.contentWidth
 	if contentWidth <= 0 {
 		contentWidth = compactReadingContentWidth(mainContentWidth)
 	}

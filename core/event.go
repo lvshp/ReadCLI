@@ -19,7 +19,7 @@ func handleHomeEvent(id string) {
 	case "<Enter>", "<Right>":
 		openSelectedBook()
 	case "i":
-		setMode(modeImportInput)
+		transitionTo(modeImportInput)
 	case "/":
 		startBookshelfSearch()
 	case "o":
@@ -43,8 +43,7 @@ func handleReadingEvent(id string) {
 	switch id {
 	case "q", "<C-c>":
 		syncCurrentBookState()
-		app.mode = modeHome
-		app.showReadingQuickHelp = false
+		transitionTo(modeHome)
 		setStatus(statusInfo, "已回到书架")
 	case "?":
 		displayReadingQuickHelp()
@@ -59,26 +58,26 @@ func handleReadingEvent(id string) {
 	case "b":
 		displayBossKey()
 	case "<C-n>", "j", "<Space>", "<Enter>", "<Down>":
-		if app.rowNumber == "" {
+		if app.readingState.rowNumber == "" {
 			moveReading(pageStep())
 		} else {
-			if num, err := lib.ParseRowNum(app.rowNumber); err != nil {
+			if num, err := lib.ParseRowNum(app.readingState.rowNumber); err != nil {
 				setStatus(statusError, err.Error())
 			} else {
 				moveReading(num)
 			}
-			app.rowNumber = ""
+			app.readingState.rowNumber = ""
 		}
 	case "<C-p>", "k", "<Up>":
-		if app.rowNumber == "" {
+		if app.readingState.rowNumber == "" {
 			moveReading(-pageStep())
 		} else {
-			if num, err := lib.ParseRowNum(app.rowNumber); err != nil {
+			if num, err := lib.ParseRowNum(app.readingState.rowNumber); err != nil {
 				setStatus(statusError, err.Error())
 			} else {
 				moveReading(1 - num)
 			}
-			app.rowNumber = ""
+			app.readingState.rowNumber = ""
 		}
 	case "[", "<Left>":
 		app.reader.PrevChapter()
@@ -87,15 +86,15 @@ func handleReadingEvent(id string) {
 		app.reader.NextChapter()
 		syncCurrentBookState()
 	case "+", "=":
-		setDisplayLines(app.displayLines + 1)
+		setDisplayLines(app.readingState.displayLines + 1)
 	case "-", "_":
-		setDisplayLines(app.displayLines - 1)
+		setDisplayLines(app.readingState.displayLines - 1)
 	case "c":
 		cycleReadingColorPreset()
 	case "t":
 		toggleTimer()
 	case "/":
-		setMode(modeSearchInput)
+		transitionTo(modeSearchInput)
 	case "g":
 		startReadingJumpInput()
 	case ",":
@@ -113,15 +112,15 @@ func handleReadingEvent(id string) {
 	case "T":
 		switchTheme()
 	case "0", "1", "2", "3", "4", "5", "6", "7", "8", "9":
-		app.rowNumber += id
-		setStatus(statusInfo, "跳转输入: "+app.rowNumber)
+		app.readingState.rowNumber += id
+		setStatus(statusInfo, "跳转输入: "+app.readingState.rowNumber)
 	}
 }
 
 func handleReadingSettingsEvent(id string) {
 	switch id {
 	case "<Escape>", "q":
-		app.mode = modeReading
+		transitionTo(modeReading)
 	case "j", "<Down>":
 		moveReadingSettings(1)
 	case "k", "<Up>":
@@ -138,9 +137,9 @@ func handleReadingSettingsEvent(id string) {
 func handleTOCEvent(id string) {
 	switch id {
 	case "q", "<C-c>":
-		app.mode = modeHome
+		transitionTo(modeHome)
 	case "m", "<Left>":
-		app.mode = modeReading
+		transitionTo(modeReading)
 	case "j", "<C-n>", "<Down>":
 		updateTOCSelection(1)
 	case "k", "<C-p>", "<Up>":
@@ -155,7 +154,7 @@ func handleTOCEvent(id string) {
 func handleBookmarkEvent(id string) {
 	switch id {
 	case "q", "B", "<Left>":
-		app.mode = modeReading
+		transitionTo(modeReading)
 	case "j", "<C-n>", "<Down>":
 		moveBookmarks(1)
 	case "k", "<C-p>", "<Up>":
@@ -172,21 +171,20 @@ func handleTextInputEvent(id string, onEnter func()) {
 	switch id {
 	case "<Escape>":
 		if app.mode == modeReadingColorInput {
-			app.mode = modeReadingSettings
+			transitionTo(modeReadingSettings)
 		} else if app.mode == modeBookshelfSearchInput {
-			app.bookshelfQuery = ""
-			app.shelfIndex = 0
-			app.mode = modeHome
+			app.bookshelfState.query = ""
+			app.bookshelfState.shelfIndex = 0
+			transitionTo(modeHome)
 			setStatus(statusInfo, "书架搜索已取消")
 		} else if app.mode == modeReadingJumpInput {
-			app.mode = modeReading
+			transitionTo(modeReading)
 			setStatus(statusInfo, "已取消跳转")
 		} else if app.currentFile != "" {
-			app.mode = modeReading
+			transitionTo(modeReading)
 		} else {
-			app.mode = modeHome
+			transitionTo(modeHome)
 		}
-		resetInputState()
 		if originalMode != modeBookshelfSearchInput && originalMode != modeReadingJumpInput {
 			setStatus(statusInfo, "已取消输入")
 		}
@@ -209,7 +207,7 @@ func handleTextInputEvent(id string, onEnter func()) {
 	case "<Home>":
 		setInputCursor(0)
 	case "<End>":
-		setInputCursor(len([]rune(app.inputValue)))
+		setInputCursor(len([]rune(app.uiState.input.value)))
 	case "<Tab>":
 		if app.mode == modeImportInput {
 			completeImportPath()
@@ -233,9 +231,9 @@ func handleTextInputEvent(id string, onEnter func()) {
 func handleDeleteConfirmEvent(id string) {
 	switch id {
 	case "<Escape>", "q":
-		app.mode = modeHome
-		app.deleteTargetPath = ""
-		app.deleteTargetTitle = ""
+		transitionTo(modeHome)
+		app.bookshelfState.deleteTargetPath = ""
+		app.bookshelfState.deleteTargetTitle = ""
 	case "y":
 		removeSelectedBook(false)
 	case "D":
@@ -248,12 +246,12 @@ func handleUpdatePromptEvent(id string) {
 	case "y", "<Enter>":
 		startUpdateInstall()
 	case "n", "q", "<Escape>":
-		if !app.updatePromptManual && app.updateRelease != nil && app.config != nil {
-			app.config.SkippedUpdateVersion = strings.TrimSpace(app.updateRelease.TagName)
+		if !app.updateState.promptManual && app.updateState.release != nil && app.config != nil {
+			app.config.SkippedUpdateVersion = strings.TrimSpace(app.updateState.release.TagName)
 			saveConfig("保存配置")
 		}
-		app.mode = app.updateReturnMode
-		if app.updatePromptManual {
+		transitionTo(app.updateState.returnMode)
+		if app.updateState.promptManual {
 			setStatus(statusInfo, "已取消本次更新")
 		} else {
 			setStatus(statusInfo, "该版本已忽略，之后将不再自动提醒")
@@ -300,6 +298,80 @@ func handleUpdateRestartEvent(id string) {
 	switch id {
 	case "<Enter>", "q", "<C-c>":
 		app.quit = true
+	}
+}
+
+func dispatchEvent(id string) {
+	switch {
+	case isInputMode(app.mode):
+		dispatchInputEvent(id)
+	case isUpdateMode(app.mode):
+		dispatchUpdateEvent(id)
+	default:
+		dispatchSceneEvent(id)
+	}
+}
+
+func dispatchSceneEvent(id string) {
+	switch app.mode {
+	case modeHome:
+		handleHomeEvent(id)
+	case modeReading:
+		handleReadingEvent(id)
+	case modeTOC:
+		handleTOCEvent(id)
+	case modeBookmarks:
+		handleBookmarkEvent(id)
+	case modeReadingSettings:
+		handleReadingSettingsEvent(id)
+	case modeDeleteConfirm:
+		handleDeleteConfirmEvent(id)
+	}
+}
+
+func dispatchInputEvent(id string) {
+	switch app.mode {
+	case modeSearchInput:
+		handleTextInputEvent(id, runSearch)
+	case modeBookshelfSearchInput:
+		handleTextInputEvent(id, runBookshelfSearch)
+	case modeReadingJumpInput:
+		handleTextInputEvent(id, runReadingJump)
+	case modeImportInput:
+		handleTextInputEvent(id, importBook)
+	case modeReadingColorInput:
+		handleTextInputEvent(id, applyReadingTextColorInput)
+	}
+}
+
+func dispatchUpdateEvent(id string) {
+	switch app.mode {
+	case modeUpdatePrompt:
+		if !scrollUpdatePrompt(id) {
+			handleUpdatePromptEvent(id)
+		}
+	case modeUpdating:
+		handleUpdatingEvent(id)
+	case modeUpdateRestart:
+		handleUpdateRestartEvent(id)
+	}
+}
+
+func isInputMode(m mode) bool {
+	switch m {
+	case modeSearchInput, modeBookshelfSearchInput, modeReadingJumpInput, modeImportInput, modeReadingColorInput:
+		return true
+	default:
+		return false
+	}
+}
+
+func isUpdateMode(m mode) bool {
+	switch m {
+	case modeUpdatePrompt, modeUpdating, modeUpdateRestart:
+		return true
+	default:
+		return false
 	}
 }
 

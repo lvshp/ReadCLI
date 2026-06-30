@@ -8,10 +8,10 @@ import (
 )
 
 func buildUpdatePromptPanel() string {
-	if app.updateRelease == nil {
+	if app.updateState.release == nil {
 		return "没有可用更新。"
 	}
-	body := strings.TrimSpace(app.updateRelease.Body)
+	body := strings.TrimSpace(app.updateState.release.Body)
 	if body == "" {
 		body = "本次版本未提供额外说明。"
 	}
@@ -19,7 +19,7 @@ func buildUpdatePromptPanel() string {
 		"发现新版本",
 		"",
 		fmt.Sprintf("当前版本：%s", emptyFallback(strings.TrimSpace(app.currentVersion), "未知")),
-		fmt.Sprintf("最新版本：%s", app.updateRelease.TagName),
+		fmt.Sprintf("最新版本：%s", app.updateState.release.TagName),
 		fmt.Sprintf("当前二进制：%s", emptyFallback(shortenDisplay(lib.CurrentExecutablePath(), 56), "未知")),
 		"",
 		"是否现在下载并替换当前程序？",
@@ -31,7 +31,7 @@ func buildUpdatePromptPanel() string {
 		lines = append(lines, "  "+line)
 	}
 	lines = append(lines, "", "j/k 上下翻页，y/Enter 开始更新，n/Esc 稍后再说。")
-	if !app.updatePromptManual {
+	if !app.updateState.promptManual {
 		lines = append(lines, "如果这次选择不更新，之后启动时不会再提醒这个版本。")
 	} else {
 		lines = append(lines, "这是手动检查更新，不会受之前的忽略记录影响。")
@@ -41,10 +41,10 @@ func buildUpdatePromptPanel() string {
 
 func buildUpdatingPanel() string {
 	version := "最新版本"
-	if app.updateRelease != nil && app.updateRelease.TagName != "" {
-		version = app.updateRelease.TagName
+	if app.updateState.release != nil && app.updateState.release.TagName != "" {
+		version = app.updateState.release.TagName
 	}
-	progress := app.updateProgress
+	progress := app.updateState.progress
 	lines := []string{
 		"正在安装更新",
 		"",
@@ -70,8 +70,8 @@ func buildUpdatingPanel() string {
 
 func buildUpdateRestartPanel() string {
 	version := "新版本"
-	if app.updateRelease != nil && app.updateRelease.TagName != "" {
-		version = app.updateRelease.TagName
+	if app.updateState.release != nil && app.updateState.release.TagName != "" {
+		version = app.updateState.release.TagName
 	}
 	return strings.Join([]string{
 		"更新已安装",

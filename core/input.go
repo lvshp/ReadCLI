@@ -8,75 +8,75 @@ import (
 )
 
 func resetInputState() {
-	app.inputValue = ""
-	app.inputCursor = 0
-	app.inputHints = nil
-	app.inputHintIndex = 0
+	app.uiState.input.value = ""
+	app.uiState.input.cursor = 0
+	app.uiState.input.hints = nil
+	app.uiState.input.hintIndex = 0
 }
 
 func insertInputText(text string) {
-	runes := []rune(app.inputValue)
-	if app.inputCursor < 0 {
-		app.inputCursor = 0
+	runes := []rune(app.uiState.input.value)
+	if app.uiState.input.cursor < 0 {
+		app.uiState.input.cursor = 0
 	}
-	if app.inputCursor > len(runes) {
-		app.inputCursor = len(runes)
+	if app.uiState.input.cursor > len(runes) {
+		app.uiState.input.cursor = len(runes)
 	}
 	insert := []rune(text)
-	runes = append(runes[:app.inputCursor], append(insert, runes[app.inputCursor:]...)...)
-	app.inputValue = string(runes)
-	app.inputCursor += len(insert)
-	app.inputHints = nil
-	app.inputHintIndex = 0
+	runes = append(runes[:app.uiState.input.cursor], append(insert, runes[app.uiState.input.cursor:]...)...)
+	app.uiState.input.value = string(runes)
+	app.uiState.input.cursor += len(insert)
+	app.uiState.input.hints = nil
+	app.uiState.input.hintIndex = 0
 }
 
 func deleteInputBackward() {
-	runes := []rune(app.inputValue)
-	if app.inputCursor <= 0 || len(runes) == 0 {
+	runes := []rune(app.uiState.input.value)
+	if app.uiState.input.cursor <= 0 || len(runes) == 0 {
 		return
 	}
-	runes = append(runes[:app.inputCursor-1], runes[app.inputCursor:]...)
-	app.inputValue = string(runes)
-	app.inputCursor--
-	app.inputHints = nil
-	app.inputHintIndex = 0
+	runes = append(runes[:app.uiState.input.cursor-1], runes[app.uiState.input.cursor:]...)
+	app.uiState.input.value = string(runes)
+	app.uiState.input.cursor--
+	app.uiState.input.hints = nil
+	app.uiState.input.hintIndex = 0
 }
 
 func deleteInputForward() {
-	runes := []rune(app.inputValue)
-	if app.inputCursor < 0 || app.inputCursor >= len(runes) {
+	runes := []rune(app.uiState.input.value)
+	if app.uiState.input.cursor < 0 || app.uiState.input.cursor >= len(runes) {
 		return
 	}
-	runes = append(runes[:app.inputCursor], runes[app.inputCursor+1:]...)
-	app.inputValue = string(runes)
-	app.inputHints = nil
-	app.inputHintIndex = 0
+	runes = append(runes[:app.uiState.input.cursor], runes[app.uiState.input.cursor+1:]...)
+	app.uiState.input.value = string(runes)
+	app.uiState.input.hints = nil
+	app.uiState.input.hintIndex = 0
 }
 
 func moveInputCursor(delta int) {
-	runes := []rune(app.inputValue)
-	app.inputCursor += delta
-	if app.inputCursor < 0 {
-		app.inputCursor = 0
+	runes := []rune(app.uiState.input.value)
+	app.uiState.input.cursor += delta
+	if app.uiState.input.cursor < 0 {
+		app.uiState.input.cursor = 0
 	}
-	if app.inputCursor > len(runes) {
-		app.inputCursor = len(runes)
+	if app.uiState.input.cursor > len(runes) {
+		app.uiState.input.cursor = len(runes)
 	}
 }
 
 func setInputCursor(pos int) {
-	runes := []rune(app.inputValue)
+	runes := []rune(app.uiState.input.value)
 	if pos < 0 {
 		pos = 0
 	}
 	if pos > len(runes) {
 		pos = len(runes)
 	}
-	app.inputCursor = pos
+	app.uiState.input.cursor = pos
 }
 
 func completeImportPath() {
-	current := strings.TrimSpace(app.inputValue)
+	current := strings.TrimSpace(app.uiState.input.value)
 	if current == "" {
 		current = "."
 	}
@@ -85,8 +85,8 @@ func completeImportPath() {
 	dir, prefix := splitImportPath(resolved)
 	entries, err := os.ReadDir(dir)
 	if err != nil {
-		app.inputHints = nil
-		app.inputHintIndex = 0
+		app.uiState.input.hints = nil
+		app.uiState.input.hintIndex = 0
 		setStatus(statusError, "无法读取目录: "+shorten(dir, 36))
 		return
 	}
@@ -109,8 +109,8 @@ func completeImportPath() {
 		matches = append(matches, match{resolved: resolvedMatch, display: displayMatch})
 	}
 	if len(matches) == 0 {
-		app.inputHints = nil
-		app.inputHintIndex = 0
+		app.uiState.input.hints = nil
+		app.uiState.input.hintIndex = 0
 		setStatus(statusError, "没有匹配的路径")
 		return
 	}
@@ -119,43 +119,43 @@ func completeImportPath() {
 	for _, item := range matches[1:] {
 		common = commonPathPrefix(common, item.display)
 	}
-	if len([]rune(common)) > len([]rune(app.inputValue)) {
-		app.inputValue = common
-		app.inputCursor = len([]rune(common))
+	if len([]rune(common)) > len([]rune(app.uiState.input.value)) {
+		app.uiState.input.value = common
+		app.uiState.input.cursor = len([]rune(common))
 	}
 
-	previousHints := append([]string(nil), app.inputHints...)
-	app.inputHints = nil
+	previousHints := append([]string(nil), app.uiState.input.hints...)
+	app.uiState.input.hints = nil
 	for _, item := range matches {
-		app.inputHints = append(app.inputHints, item.display)
+		app.uiState.input.hints = append(app.uiState.input.hints, item.display)
 	}
 
 	if len(matches) == 1 {
-		app.inputValue = matches[0].display
-		app.inputCursor = len([]rune(app.inputValue))
-		app.inputHints = nil
-		app.inputHintIndex = 0
+		app.uiState.input.value = matches[0].display
+		app.uiState.input.cursor = len([]rune(app.uiState.input.value))
+		app.uiState.input.hints = nil
+		app.uiState.input.hintIndex = 0
 		setStatus(statusInfo, "已补全路径")
 		return
 	}
-	if sameStringSlice(previousHints, app.inputHints) {
-		app.inputHintIndex = (app.inputHintIndex + 1) % len(app.inputHints)
+	if sameStringSlice(previousHints, app.uiState.input.hints) {
+		app.uiState.input.hintIndex = (app.uiState.input.hintIndex + 1) % len(app.uiState.input.hints)
 	} else {
-		app.inputHintIndex = 0
+		app.uiState.input.hintIndex = 0
 	}
 	setStatusf(statusInfo, "找到 %d 个候选", len(matches))
 }
 
 func moveInputHint(delta int) {
-	if len(app.inputHints) == 0 {
+	if len(app.uiState.input.hints) == 0 {
 		return
 	}
-	app.inputHintIndex += delta
-	if app.inputHintIndex < 0 {
-		app.inputHintIndex = len(app.inputHints) - 1
+	app.uiState.input.hintIndex += delta
+	if app.uiState.input.hintIndex < 0 {
+		app.uiState.input.hintIndex = len(app.uiState.input.hints) - 1
 	}
-	if app.inputHintIndex >= len(app.inputHints) {
-		app.inputHintIndex = 0
+	if app.uiState.input.hintIndex >= len(app.uiState.input.hints) {
+		app.uiState.input.hintIndex = 0
 	}
 }
 
@@ -174,11 +174,11 @@ func importHintPageBounds(pageSize int) (start, end, page, totalPages int) {
 	if pageSize < 1 {
 		pageSize = 1
 	}
-	total := len(app.inputHints)
+	total := len(app.uiState.input.hints)
 	if total == 0 {
 		return 0, 0, 1, 1
 	}
-	start = (app.inputHintIndex / pageSize) * pageSize
+	start = (app.uiState.input.hintIndex / pageSize) * pageSize
 	end = start + pageSize
 	if end > total {
 		end = total
@@ -189,16 +189,16 @@ func importHintPageBounds(pageSize int) (start, end, page, totalPages int) {
 }
 
 func acceptSelectedImportHint() bool {
-	if len(app.inputHints) == 0 {
+	if len(app.uiState.input.hints) == 0 {
 		return false
 	}
-	if app.inputHintIndex < 0 || app.inputHintIndex >= len(app.inputHints) {
-		app.inputHintIndex = 0
+	if app.uiState.input.hintIndex < 0 || app.uiState.input.hintIndex >= len(app.uiState.input.hints) {
+		app.uiState.input.hintIndex = 0
 	}
-	app.inputValue = app.inputHints[app.inputHintIndex]
-	app.inputCursor = len([]rune(app.inputValue))
-	app.inputHints = nil
-	app.inputHintIndex = 0
+	app.uiState.input.value = app.uiState.input.hints[app.uiState.input.hintIndex]
+	app.uiState.input.cursor = len([]rune(app.uiState.input.value))
+	app.uiState.input.hints = nil
+	app.uiState.input.hintIndex = 0
 	setStatus(statusInfo, "已填入候选路径")
 	return true
 }
@@ -313,8 +313,8 @@ func sameStringSlice(a, b []string) bool {
 }
 
 func toggleImportRecursive() {
-	app.importRecursive = !app.importRecursive
-	if app.importRecursive {
+	app.uiState.input.importRecursive = !app.uiState.input.importRecursive
+	if app.uiState.input.importRecursive {
 		setStatus(statusInfo, "目录导入已切换为递归子目录")
 		return
 	}
@@ -322,7 +322,7 @@ func toggleImportRecursive() {
 }
 
 func importModeLabel() string {
-	return importModeLabelFor(app.importRecursive)
+	return importModeLabelFor(app.uiState.input.importRecursive)
 }
 
 func importModeLabelFor(recursive bool) string {

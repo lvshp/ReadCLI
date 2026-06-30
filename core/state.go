@@ -71,6 +71,64 @@ type theme struct {
 	RightName  string
 }
 
+type bookshelfState struct {
+	sortMode          string
+	filterMode        string
+	shelfIndex        int
+	query             string
+	deleteTargetPath  string
+	deleteTargetTitle string
+	loadingBookPath   string
+	lastHomePath      string
+}
+
+type readingState struct {
+	bookmarkIndex        int
+	tocIndex             int
+	tocNumber            string
+	searchQuery          string
+	lastSearchIndex      int
+	showProgress         bool
+	showHelp             bool
+	showReadingQuickHelp bool
+	compactMode          bool
+	displayLines         int
+	color                int
+	timer                bool
+	ticker               *time.Ticker
+	rowNumber            string
+	settingsIndex        int
+	contentWidth         int
+}
+
+type updateState struct {
+	release      *lib.ReleaseInfo
+	returnMode   mode
+	messages     chan updateMessage
+	progress     lib.UpdateProgress
+	promptManual bool
+}
+
+type inputState struct {
+	value           string
+	cursor          int
+	hints           []string
+	hintIndex       int
+	importRecursive bool
+}
+
+type uiState struct {
+	input                   inputState
+	statusMessage           string
+	statusMessageKind       statusKind
+	lastStatusMessage       string
+	lastStatusMessageKind   statusKind
+	statusMessageUntil      time.Time
+	statusMessageGeneration int
+	sessionStart            time.Time
+	showBorder              bool
+}
+
 type appState struct {
 	mode mode
 
@@ -84,57 +142,15 @@ type appState struct {
 	bookmarks *lib.BookmarkStore
 	progress  *lib.ProgressStore
 
-	themeOrder []string
-	sortMode   string
-	filterMode string
+	themeOrder     []string
+	bookshelfState bookshelfState
+	readingState   readingState
+	updateState    updateState
+	uiState        uiState
 
-	shelfIndex    int
-	bookmarkIndex int
-	tocIndex      int
-	tocNumber     string
-
-	inputValue      string
-	inputCursor     int
-	inputHints      []string
-	inputHintIndex  int
-	importRecursive bool
-	searchQuery     string
-	bookshelfQuery  string
-	lastSearchIndex int
-
-	statusMessage           string
-	statusMessageKind       statusKind
-	lastStatusMessage       string
-	lastStatusMessageKind   statusKind
-	statusMessageUntil      time.Time
-	statusMessageGeneration int
-	sessionStart            time.Time
-	contentWidth            int
-	showBorder              bool
-	showProgress            bool
-	showHelp                bool
-	showReadingQuickHelp    bool
-	compactMode             bool
-	bossKey                 bool
-	displayLines            int
-	color                   int
-	timer                   bool
-	ticker                  *time.Ticker
-	rowNumber               string
-	settingsIndex           int
-
-	deleteTargetPath   string
-	deleteTargetTitle  string
-	loadingBookPath    string
-	currentVersion     string
-	updateRelease      *lib.ReleaseInfo
-	updateReturnMode   mode
-	updateMessages     chan updateMessage
-	updateProgress     lib.UpdateProgress
-	updatePromptManual bool
-
-	lastHomePath string
-	quit         bool
+	bossKey        bool
+	currentVersion string
+	quit           bool
 }
 
 type cachedReader struct {

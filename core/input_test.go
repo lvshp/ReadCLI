@@ -38,8 +38,12 @@ func TestSameStringSlice(t *testing.T) {
 
 func TestImportHintPageBounds(t *testing.T) {
 	app = &appState{
-		inputHints:     []string{"a", "b", "c", "d", "e", "f", "g"},
-		inputHintIndex: 5,
+		uiState: uiState{
+			input: inputState{
+				hints:     []string{"a", "b", "c", "d", "e", "f", "g"},
+				hintIndex: 5,
+			},
+		},
 	}
 	start, end, page, totalPages := importHintPageBounds(3)
 	if start != 3 || end != 6 || page != 2 || totalPages != 3 {

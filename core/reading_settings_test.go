@@ -9,7 +9,9 @@ import (
 
 func TestReadingVisibleSourceLinesUsesDisplayLinesDirectly(t *testing.T) {
 	app = &appState{
-		displayLines: 6,
+		readingState: readingState{
+			displayLines: 6,
+		},
 		config: &lib.Config{
 			ReadingMarginTop:    1,
 			ReadingMarginBottom: 0,
@@ -26,7 +28,9 @@ func TestReadingVisibleSourceLinesUsesDisplayLinesDirectly(t *testing.T) {
 
 func TestReadingVisibleSourceLinesCapsToAvailableHeight(t *testing.T) {
 	app = &appState{
-		displayLines: 20,
+		readingState: readingState{
+			displayLines: 20,
+		},
 		config: &lib.Config{
 			ReadingMarginTop:    1,
 			ReadingMarginBottom: 1,
@@ -73,7 +77,9 @@ func TestParseConfiguredUIColorSupportsHexAndRGB(t *testing.T) {
 
 func TestBuildReadingSettingsPanelIncludesColorValue(t *testing.T) {
 	app = &appState{
-		settingsIndex: 0,
+		readingState: readingState{
+			settingsIndex: 0,
+		},
 		config: &lib.Config{
 			ForceBasicColor:          true,
 			ReadingContentWidthRatio: 0.75,

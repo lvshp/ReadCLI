@@ -21,16 +21,16 @@ func switchTheme() {
 }
 
 func toggleBorder() {
-	app.showBorder = !app.showBorder
-	app.config.ShowBorder = app.showBorder
+	app.uiState.showBorder = !app.uiState.showBorder
+	app.config.ShowBorder = app.uiState.showBorder
 	saveConfig("保存配置")
 }
 
 func toggleCompactMode() {
-	app.compactMode = !app.compactMode
-	app.config.CompactMode = app.compactMode
+	app.readingState.compactMode = !app.readingState.compactMode
+	app.config.CompactMode = app.readingState.compactMode
 	saveConfig("保存配置")
-	if app.compactMode {
+	if app.readingState.compactMode {
 		setStatus(statusInfo, "已切换为精简阅读界面")
 	} else {
 		setStatus(statusInfo, "已切换为全信息阅读界面")
@@ -39,39 +39,39 @@ func toggleCompactMode() {
 }
 
 func toggleTimer() {
-	app.timer = !app.timer
-	if app.timer {
+	app.readingState.timer = !app.readingState.timer
+	if app.readingState.timer {
 		refreshTimerTicker()
 		setStatus(statusInfo, "自动翻页已开启")
 		return
 	}
-	if app.ticker != nil {
-		app.ticker.Stop()
-		app.ticker = nil
+	if app.readingState.ticker != nil {
+		app.readingState.ticker.Stop()
+		app.readingState.ticker = nil
 	}
 	setStatus(statusInfo, "自动翻页已关闭")
 }
 
 func refreshTimerTicker() {
-	if app == nil || !app.timer {
+	if app == nil || !app.readingState.timer {
 		return
 	}
-	if app.ticker != nil {
-		app.ticker.Stop()
+	if app.readingState.ticker != nil {
+		app.readingState.ticker.Stop()
 	}
 	intervalMs := 3500
 	if app.config != nil && app.config.AutoPageIntervalMs >= 100 {
 		intervalMs = app.config.AutoPageIntervalMs
 	}
 	ticker := time.NewTicker(time.Duration(intervalMs) * time.Millisecond)
-	app.ticker = ticker
+	app.readingState.ticker = ticker
 	go func(local *time.Ticker) {
 		for range local.C {
 			if tApp == nil {
 				return
 			}
 			queueUIUpdate(func() {
-				if app.ticker != local || !app.timer {
+				if app.readingState.ticker != local || !app.readingState.timer {
 					return
 				}
 				if app.mode == modeReading && app.reader != nil {
@@ -84,23 +84,23 @@ func refreshTimerTicker() {
 }
 
 func openReadingSettings() {
-	setMode(modeReadingSettings)
-	app.settingsIndex = 0
+	transitionTo(modeReadingSettings)
+	app.readingState.settingsIndex = 0
 	setStatus(statusInfo, "已打开阅读设置")
 }
 
 func moveReadingSettings(delta int) {
 	items := readingSettingsItems()
 	if len(items) == 0 {
-		app.settingsIndex = 0
+		app.readingState.settingsIndex = 0
 		return
 	}
-	app.settingsIndex += delta
-	if app.settingsIndex < 0 {
-		app.settingsIndex = 0
+	app.readingState.settingsIndex += delta
+	if app.readingState.settingsIndex < 0 {
+		app.readingState.settingsIndex = 0
 	}
-	if app.settingsIndex >= len(items) {
-		app.settingsIndex = len(items) - 1
+	if app.readingState.settingsIndex >= len(items) {
+		app.readingState.settingsIndex = len(items) - 1
 	}
 }
 
@@ -108,7 +108,7 @@ func adjustReadingSetting(delta int) {
 	if app == nil || app.config == nil {
 		return
 	}
-	switch app.settingsIndex {
+	switch app.readingState.settingsIndex {
 	case 0:
 		app.config.ReadingContentWidthRatio += float64(delta) * 0.05
 		if app.config.ReadingContentWidthRatio < 0.4 {
@@ -142,11 +142,11 @@ func activateReadingSetting() {
 	if app == nil || app.config == nil {
 		return
 	}
-	switch app.settingsIndex {
+	switch app.readingState.settingsIndex {
 	case 7:
-		app.mode = modeReadingColorInput
-		app.inputValue = app.config.ReadingTextColor
-		app.inputCursor = len([]rune(app.inputValue))
+		transitionTo(modeReadingColorInput)
+		app.uiState.input.value = app.config.ReadingTextColor
+		app.uiState.input.cursor = len([]rune(app.uiState.input.value))
 	case 8:
 		app.config.ReadingHighContrast = !app.config.ReadingHighContrast
 		saveConfig("保存配置")
@@ -163,13 +163,13 @@ func activateReadingSetting() {
 }
 
 func applyReadingTextColorInput() {
-	value := lib.NormalizeConfiguredColor(app.inputValue)
+	value := lib.NormalizeConfiguredColor(app.uiState.input.value)
 	if value == "" {
 		setStatus(statusError, "颜色格式无效")
 		return
 	}
 	app.config.ReadingTextColor = value
-	app.mode = modeReadingSettings
+	transitionTo(modeReadingSettings)
 	resetInputState()
 	saveConfig("保存配置")
 	setStatus(statusInfo, "字体颜色已更新")
@@ -197,12 +197,12 @@ func setDisplayLines(lines int) {
 	if lines < 1 {
 		lines = 1
 	}
-	app.displayLines = lines
+	app.readingState.displayLines = lines
 	app.config.DisplayLines = lines
 	saveConfig("保存配置")
 	visible := readingVisibleSourceLines()
-	if visible < app.displayLines {
-		setStatusf(statusInfo, "每页正文 %d 行（当前窗口最多显示 %d 行）", app.displayLines, visible)
+	if visible < app.readingState.displayLines {
+		setStatusf(statusInfo, "每页正文 %d 行（当前窗口最多显示 %d 行）", app.readingState.displayLines, visible)
 	} else {
 		setStatusf(statusInfo, "每页正文 %d 行", visible)
 	}
@@ -215,8 +215,8 @@ func displayBossKey() {
 	}
 	app.bossKey = !app.bossKey
 	if app.bossKey {
-		app.showHelp = false
-		app.showProgress = false
+		app.readingState.showHelp = false
+		app.readingState.showProgress = false
 		setStatus(statusInfo, "Boss Key 已开启")
 		return
 	}
@@ -227,17 +227,17 @@ func persistState() {
 	if app == nil {
 		return
 	}
-	if app.ticker != nil {
-		app.ticker.Stop()
-		app.ticker = nil
+	if app.readingState.ticker != nil {
+		app.readingState.ticker.Stop()
+		app.readingState.ticker = nil
 	}
 	if app.reader != nil && app.currentFile != "" {
 		syncCurrentBookState()
 	}
-	app.config.DisplayLines = app.displayLines
-	app.config.ShowBorder = app.showBorder
-	app.config.CompactMode = app.compactMode
-	app.config.SelectedBookshelf = app.shelfIndex
+	app.config.DisplayLines = app.readingState.displayLines
+	app.config.ShowBorder = app.uiState.showBorder
+	app.config.CompactMode = app.readingState.compactMode
+	app.config.SelectedBookshelf = app.bookshelfState.shelfIndex
 	saveConfig("保存配置")
 	saveBookshelf("保存书架")
 	saveBookmarks("保存书签")
