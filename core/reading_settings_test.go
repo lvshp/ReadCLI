@@ -1,11 +1,92 @@
 package core
 
 import (
+	"fmt"
 	"strings"
 	"testing"
 
 	"github.com/lvshp/ReadCLI/lib"
 )
+
+func TestReadingAlignmentPositionsColumn(t *testing.T) {
+	oldApp, oldWidth, oldHeight := app, mainContentWidth, mainContentHeight
+	t.Cleanup(func() { app, mainContentWidth, mainContentHeight = oldApp, oldWidth, oldHeight })
+	for _, compact := range []bool{false, true} {
+		for _, tc := range []struct {
+			alignment                                 string
+			width, contentWidth, left, right, padding int
+		}{
+			{"left", 80, 40, 2, 4, 2},
+			{"center", 80, 40, 2, 4, 19},
+			{"right", 80, 40, 2, 4, 36},
+			{"center", 51, 36, 0, 0, 7},
+			{"right", 51, 36, 0, 0, 15},
+			{"right", 40, 40, 2, 4, 0},
+			{"center", 20, 40, 2, 4, 0},
+			{"right", 45, 40, 20, 20, 5},
+		} {
+			t.Run(fmt.Sprintf("compact=%t/%+v", compact, tc), func(t *testing.T) {
+				app = &appState{
+					mode:         modeReading,
+					readingState: readingState{compactMode: compact, contentWidth: tc.contentWidth},
+					config:       &lib.Config{ReadingAlignment: tc.alignment, ReadingMarginLeft: tc.left, ReadingMarginRight: tc.right},
+				}
+				mainContentWidth, mainContentHeight = tc.width, 20
+				text := "  中文段落\n[match](fg:black,bg:yellow,mod:bold) short"
+				pad := strings.Repeat(" ", tc.padding)
+				want := pad + "  中文段落\n" + pad + "[match](fg:black,bg:yellow,mod:bold) short"
+				if compact {
+					want = "\n" + want
+				}
+				if got := formatReadingPanel(text); got != want {
+					t.Fatalf("formatted column = %q, want %q", got, want)
+				}
+			})
+		}
+	}
+}
+
+type alignmentTestReader struct {
+	fakeReader
+	reflows int
+}
+
+func (r *alignmentTestReader) Reflow(int) { r.reflows++ }
+
+func TestReadingAlignmentKeyboardAndSettingsPersistWithoutReflow(t *testing.T) {
+	t.Setenv("READCLI_DATA_DIR", t.TempDir())
+	oldApp := app
+	t.Cleanup(func() { app = oldApp })
+	r := &alignmentTestReader{fakeReader: fakeReader{pos: 12, total: 100}}
+	app = &appState{
+		mode:         modeReading,
+		config:       &lib.Config{},
+		reader:       r,
+		readingState: readingState{compactMode: true, contentWidth: 40},
+	}
+	for _, want := range []string{"left", "right", "center"} {
+		dispatchEvent("a")
+		cfg, err := lib.LoadConfig()
+		if err != nil || cfg.ReadingAlignment != want {
+			t.Fatalf("shortcut saved %#v, %v; want %q", cfg, err, want)
+		}
+	}
+	app.mode = modeReadingSettings
+	app.readingState.settingsIndex = len(readingSettingsItems()) - 1
+	if !strings.Contains(buildReadingSettingsPanel(), "居中") {
+		t.Fatal("settings should show the selected alignment")
+	}
+	for _, step := range []struct{ key, want string }{{"<Left>", "right"}, {"<Right>", "center"}, {"<Enter>", "left"}} {
+		dispatchEvent(step.key)
+		cfg, err := lib.LoadConfig()
+		if err != nil || cfg.ReadingAlignment != step.want {
+			t.Fatalf("settings saved %#v, %v; want %q", cfg, err, step.want)
+		}
+	}
+	if r.reflows != 0 || r.pos != 12 || app.readingState.contentWidth != 40 {
+		t.Fatalf("alignment changed wrapping or progress: reader=%+v, width=%d", r, app.readingState.contentWidth)
+	}
+}
 
 func TestReadingVisibleSourceLinesUsesDisplayLinesDirectly(t *testing.T) {
 	app = &appState{

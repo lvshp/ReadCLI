@@ -193,7 +193,7 @@ func buildFooter() string {
 	case modeHome:
 		return line1 + "\n[↑/↓](fg:cyan):选择  [→/Enter](fg:cyan):打开  [/](fg:cyan):搜书架  [i](fg:cyan):导入  [o/r](fg:cyan):排序/过滤  [x](fg:cyan):移除  [T](fg:cyan):主题  [u](fg:cyan):更新  [q](fg:red):退出"
 	case modeReading:
-		return line1 + "\n[↑/↓](fg:cyan):翻页  [←/→](fg:cyan):切章  [g](fg:cyan):跳转  [?](fg:cyan):快捷键  [+/-](fg:cyan):正文行数  [c](fg:cyan):颜色  [,](fg:cyan):设置  [/](fg:cyan):搜索  [s/B](fg:cyan):书签  [m](fg:cyan):目录  [z](fg:cyan):精简/全信息  [q](fg:red):书架"
+		return line1 + "\n[↑/↓](fg:cyan):翻页  [←/→](fg:cyan):切章  [g](fg:cyan):跳转  [?](fg:cyan):快捷键  [+/-](fg:cyan):正文行数  [a](fg:cyan):对齐  [c](fg:cyan):颜色  [,](fg:cyan):设置  [/](fg:cyan):搜索  [s/B](fg:cyan):书签  [m](fg:cyan):目录  [z](fg:cyan):精简/全信息  [q](fg:red):书架"
 	case modeTOC:
 		return line1 + "\n[↑/↓](fg:cyan):移动  [→/Enter](fg:cyan):打开  [←/m](fg:cyan):返回  [0-9](fg:cyan):跳章  [q](fg:red):书架"
 	case modeBookmarks:
@@ -355,7 +355,7 @@ func withReadingQuickHelp(text string) string {
 	help := []string{
 		"[快捷键](fg:green,mod:bold)  j/k 翻页  ←/→ 切章  g 跳转  / 搜索",
 		"          s 书签  B 书签列表  m 目录  z 精简/全信息",
-		"          , 阅读设置  c 颜色  t 自动翻页  q 书架",
+		"          , 阅读设置  a 对齐  c 颜色  t 自动翻页  q 书架",
 		"          再按 ? 隐藏",
 	}
 	visible := readingVisibleSourceLines()

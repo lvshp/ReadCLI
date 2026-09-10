@@ -1,9 +1,46 @@
 package lib
 
 import (
+	"os"
 	"path/filepath"
 	"testing"
 )
+
+func TestReadingAlignmentConfig(t *testing.T) {
+	t.Setenv("READCLI_DATA_DIR", t.TempDir())
+	for _, tc := range []struct{ json, want string }{
+		{`{}`, ""},
+		{`{"reading_alignment":""}`, ""},
+		{`{"reading_alignment":"invalid"}`, ""},
+		{`{"reading_alignment":"left"}`, "left"},
+		{`{"reading_alignment":" CENTER "}`, "center"},
+		{`{"reading_alignment":"right"}`, "right"},
+	} {
+		t.Run(tc.json, func(t *testing.T) {
+			path, err := configFilePath()
+			if err != nil {
+				t.Fatal(err)
+			}
+			if err := os.WriteFile(path, []byte(tc.json), 0644); err != nil {
+				t.Fatal(err)
+			}
+			cfg, err := LoadConfig()
+			if err != nil {
+				t.Fatal(err)
+			}
+			if cfg.ReadingAlignment != tc.want {
+				t.Fatalf("alignment = %q, want %q", cfg.ReadingAlignment, tc.want)
+			}
+			if err := SaveConfig(cfg); err != nil {
+				t.Fatal(err)
+			}
+			loaded, err := LoadConfig()
+			if err != nil || loaded.ReadingAlignment != tc.want {
+				t.Fatalf("alignment round trip: %#v, %v", loaded, err)
+			}
+		})
+	}
+}
 
 func TestConfigRoundTrip(t *testing.T) {
 	tempHome := t.TempDir()

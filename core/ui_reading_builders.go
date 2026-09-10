@@ -41,7 +41,7 @@ func buildHelpPanel() string {
 
 	leftSections := []string{
 		"[书架首页](fg:green,mod:bold)\n  j/k 移动  i 导入  o 排序\n  r 过滤  x 移除  ? 帮助  q 退出",
-		"[阅读界面](fg:green,mod:bold)\n  j/k 翻页  [/] 切章  / 搜索\n  n/N 搜索跳转  s 书签  B 书签列表\n  m 目录  p 进度  , 阅读设置\n  c 字体颜色  t 自动翻页\n  b Boss Key  z 精简/全信息\n  T 主题  +/- 行数",
+		"[阅读界面](fg:green,mod:bold)\n  j/k 翻页  [/] 切章  / 搜索\n  n/N 搜索跳转  s 书签  B 书签列表\n  m 目录  p 进度  , 阅读设置\n  a 正文对齐  c 字体颜色  t 自动翻页\n  b Boss Key  z 精简/全信息\n  T 主题  +/- 行数",
 		"[目录](fg:green,mod:bold)\n  j/k 移动  Enter 打开  m 返回\n  0-9 页码输入",
 		"[书签列表](fg:green,mod:bold)\n  j/k 移动  d 删除  Enter 打开\n  B/q 返回",
 		"[通用](fg:green,mod:bold)\n  f 切换边框  T 切换主题\n  z 精简/全信息  u 检查更新\n  q 返回/退出",
@@ -111,6 +111,7 @@ func readingSettingsItems() []readingSettingItem {
 		{Label: "字体颜色", Value: colorValue},
 		{Label: "高对比", Value: onOffText(app.config != nil && app.config.ReadingHighContrast)},
 		{Label: "基础色模式", Value: onOffText(app.config != nil && app.config.ForceBasicColor)},
+		{Label: "正文对齐", Value: readingAlignmentLabel()},
 	}
 }
 
@@ -221,6 +222,9 @@ func formatReadingPanel(text string) string {
 	lines := strings.Split(text, "\n")
 	lineGap := readingLineSpacing()
 	leftPad := strings.Repeat(" ", readingMarginLeft())
+	if app != nil && app.config != nil && app.config.ReadingAlignment != "" {
+		leftPad = strings.Repeat(" ", alignedReadingLeftPadding())
+	}
 	padded := make([]string, 0, len(lines)*(lineGap+1)+readingMarginTop()+readingMarginBottom())
 	for i := 0; i < readingMarginTop(); i++ {
 		padded = append(padded, "")
@@ -256,6 +260,9 @@ func formatCompactReadingPanel(text string) string {
 	if mainContentWidth <= 52 && leftPadWidth > 2 {
 		leftPadWidth = 2
 	}
+	if app.config != nil && app.config.ReadingAlignment != "" {
+		leftPadWidth = alignedReadingLeftPadding()
+	}
 	topPad := 1
 	if mainContentHeight >= 34 {
 		topPad = 3
@@ -277,6 +284,27 @@ func formatCompactReadingPanel(text string) string {
 		}
 	}
 	return strings.Join(padded, "\n")
+}
+
+// Align the whole reading column, keeping paragraph indentation and line breaks.
+func alignedReadingLeftPadding() int {
+	width := max(0, mainContentWidth)
+	contentWidth := app.readingState.contentWidth
+	if contentWidth <= 0 {
+		contentWidth = width
+	}
+	spare := max(0, width-contentWidth)
+	left := min(readingMarginLeft(), spare)
+	right := min(readingMarginRight(), spare-left)
+	available := spare - left - right
+	switch readingAlignment() {
+	case "center":
+		return left + available/2
+	case "right":
+		return left + available
+	default:
+		return left
+	}
 }
 
 func highlightSearchMatches(text, query string) string {

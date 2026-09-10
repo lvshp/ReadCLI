@@ -91,6 +91,8 @@ func handleReadingEvent(id string) {
 		setDisplayLines(app.readingState.displayLines - 1)
 	case "c":
 		cycleReadingColorPreset()
+	case "a":
+		cycleReadingAlignment(1)
 	case "t":
 		toggleTimer()
 	case "/":

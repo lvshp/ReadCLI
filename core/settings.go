@@ -109,6 +109,9 @@ func adjustReadingSetting(delta int) {
 		return
 	}
 	switch app.readingState.settingsIndex {
+	case 10:
+		cycleReadingAlignment(delta)
+		return
 	case 0:
 		app.config.ReadingContentWidthRatio += float64(delta) * 0.05
 		if app.config.ReadingContentWidthRatio < 0.4 {
@@ -143,6 +146,8 @@ func activateReadingSetting() {
 		return
 	}
 	switch app.readingState.settingsIndex {
+	case 10:
+		cycleReadingAlignment(1)
 	case 7:
 		transitionTo(modeReadingColorInput)
 		app.uiState.input.value = app.config.ReadingTextColor
@@ -159,6 +164,46 @@ func activateReadingSetting() {
 		} else {
 			setStatus(statusInfo, "已切换为扩展颜色模式")
 		}
+	}
+}
+
+func readingAlignment() string {
+	if app != nil && app.config != nil {
+		switch app.config.ReadingAlignment {
+		case "left", "center", "right":
+			return app.config.ReadingAlignment
+		}
+	}
+	if app != nil && app.readingState.compactMode {
+		return "center"
+	}
+	return "left"
+}
+
+func readingAlignmentLabel() string {
+	switch readingAlignment() {
+	case "center":
+		return "居中"
+	case "right":
+		return "居右"
+	default:
+		return "居左"
+	}
+}
+
+func cycleReadingAlignment(delta int) {
+	if app == nil || app.config == nil {
+		return
+	}
+	alignments := []string{"center", "left", "right"}
+	for i, alignment := range alignments {
+		if alignment == readingAlignment() {
+			app.config.ReadingAlignment = alignments[(i+delta%len(alignments)+len(alignments))%len(alignments)]
+			break
+		}
+	}
+	if saveConfig("保存配置") {
+		setStatus(statusInfo, "正文已切换为"+readingAlignmentLabel())
 	}
 }
 

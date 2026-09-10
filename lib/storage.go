@@ -21,6 +21,7 @@ type Config struct {
 	ForceBasicColor          bool    `json:"force_basic_color"`
 	AutoPageIntervalMs       int     `json:"auto_page_interval_ms"`
 	ReadingContentWidthRatio float64 `json:"reading_content_width_ratio"`
+	ReadingAlignment         string  `json:"reading_alignment,omitempty"`
 	ReadingMarginLeft        int     `json:"reading_margin_left"`
 	ReadingMarginRight       int     `json:"reading_margin_right"`
 	ReadingMarginTop         int     `json:"reading_margin_top"`
@@ -157,6 +158,12 @@ func defaultConfig() *Config {
 
 func sanitizeConfig(cfg *Config) {
 	def := defaultConfig()
+	cfg.ReadingAlignment = strings.ToLower(strings.TrimSpace(cfg.ReadingAlignment))
+	switch cfg.ReadingAlignment {
+	case "left", "center", "right":
+	default:
+		cfg.ReadingAlignment = "" // Preserve the original layout for older configs.
+	}
 	if cfg.Theme == "" {
 		cfg.Theme = def.Theme
 	}

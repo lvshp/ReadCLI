@@ -284,7 +284,7 @@ Press `?` to open the built-in help page. Both Vim-style keys and arrow keys are
 
 * Vim-style: `j/k` page down/up, `[` / `]` previous/next chapter, `/` search, `n/N` next/previous result, `s/B` bookmarks, `m` TOC, `c` text color, `z` compact/full UI, `u` check updates
 * Arrow keys: `↑/↓` page down/up, `←/→` previous/next chapter, `z` compact/full UI, `u` check updates
-* Reading settings: press `,` to adjust content width, margins, line spacing, text color, high contrast mode, basic color mode, and auto-page interval
+* Reading settings: press `,` to adjust alignment, content width, margins, line spacing, text color, high contrast mode, basic color mode, and auto-page interval
 
 ### TOC / Bookmarks
 
@@ -328,9 +328,16 @@ This directory contains:
 * line spacing
 * auto-page interval in milliseconds
 * text color (`#RRGGBB`, `#RGB`, `R,G,B`)
+* `reading_alignment`: `"center"`, `"left"`, or `"right"` for the entire reading column
 * `compact_mode`
 * `reading_high_contrast`
 * `force_basic_color`
+
+### Reading alignment
+
+Press `a` in the reading view to cycle center → left → right. Changes apply immediately and are saved. You can also press `,`, select 正文对齐 (alignment), and use `←/→` or `Enter`. Both full and compact modes share this setting. The entire text column moves within the left/right margins, preserving paragraph indentation, line breaks, and reading position.
+
+To configure it manually, add `"reading_alignment": "right"` to `config.json` and restart. Set `"reading_alignment": "left"` and `"reading_margin_left": 0` to place the column at the left edge. A missing, empty, or invalid value preserves the original layout: centered in compact mode and left-aligned in full mode.
 
 ## Development
 
