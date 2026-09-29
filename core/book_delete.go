@@ -2,6 +2,7 @@ package core
 
 import (
 	"os"
+	"strings"
 
 	"github.com/lvshp/ReadCLI/lib"
 )
@@ -11,7 +12,7 @@ func removeSelectedBook(deleteFile bool) {
 	if path == "" {
 		return
 	}
-	if deleteFile {
+	if deleteFile && !strings.HasPrefix(path, "online:") {
 		if err := os.Remove(path); err != nil {
 			setStatus(statusError, "删除本地文件失败: "+shorten(err.Error(), 96))
 			return
@@ -31,6 +32,7 @@ func removeBookState(path string) {
 	// Kept small so delete flow and future cleanup commands share the same state pruning.
 	delete(app.readerCache, path)
 	delete(app.progress.Books, path)
+	delete(app.progress.Anchors, path)
 	delete(app.bookmarks.Books, path)
 	lib.RemoveBookshelfBook(app.bookshelf, path)
 	saveBookshelf("保存书架")

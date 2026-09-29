@@ -140,10 +140,16 @@ func padDisplay(text string, width int) string {
 }
 
 func currentDisplayName() string {
+	if strings.HasPrefix(app.currentFile, "online:") && app.reader != nil {
+		return remoteLabel(app.reader.BookTitle())
+	}
 	if app.currentFile != "" {
 		return filepath.Base(app.currentFile)
 	}
 	if book := selectedBook(); book != nil {
+		if book.Online != nil {
+			return remoteLabel(book.Title)
+		}
 		return filepath.Base(book.Path)
 	}
 	return "bookshelf"
@@ -162,6 +168,8 @@ func readableSort(value string) string {
 
 func readableFilter(value string) string {
 	switch value {
+	case "online":
+		return "在线"
 	case "epub":
 		return "EPUB"
 	case "txt":

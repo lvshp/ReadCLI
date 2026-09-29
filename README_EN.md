@@ -6,7 +6,7 @@
 [![CI](https://img.shields.io/github/actions/workflow/status/lvshp/ReadCLI/go.yml?branch=main&label=CI)](https://github.com/lvshp/ReadCLI/actions/workflows/go.yml)
 [![License](https://img.shields.io/badge/license-Apache%202.0-blue.svg)](./LICENSE)
 
-ReadCLI is a terminal ebook reader with support for `TXT` and `EPUB`, plus a local bookshelf, saved progress, bookmarks, search, and several IDE-style themes. Built with [tcell](https://github.com/gdamore/tcell) and [tview](https://github.com/rivo/tview), it supports macOS, Linux, and Windows.
+ReadCLI is a terminal ebook reader with support for local `TXT` / `EPUB` and online reading through Legado sources, plus source management, login, a bookshelf, saved progress, bookmarks, search, and several IDE-style themes. Built with [tcell](https://github.com/gdamore/tcell) and [tview](https://github.com/rivo/tview), it supports macOS, Linux, and Windows.
 
 ## Screenshots
 
@@ -42,7 +42,7 @@ ReadCLI is a terminal ebook reader with support for `TXT` and `EPUB`, plus a loc
 * Supports `EPUB`
 * Automatically restores the last reading position
 * Chapter TOC, previous chapter, next chapter
-* Full-text search with `n / N` result navigation
+* Full-text search for local books, current-chapter search for online books, with `n / N` result navigation
 * Highlights matches on the current page
 * Save, list, delete, and jump to bookmarks
 * Page scrolling and configurable visible text lines per page
@@ -130,6 +130,8 @@ If you want the original project, see:
 Prebuilt binaries:
 
 * [Releases](https://github.com/lvshp/ReadCLI/releases)
+
+Automatic builds from `dev` are marked **Pre-release**; the stable release keeps **Latest**. Download development builds manually from Releases. In-app updates use stable releases only. See the [release guide](./CONTRIBUTING.md#发布说明) (Chinese).
 
 Currently provided:
 
@@ -277,12 +279,12 @@ Press `?` to open the built-in help page. Both Vim-style keys and arrow keys are
 
 ### Bookshelf
 
-* Vim-style: `j/k` move, `Enter` open, `i` import, `o/r` sort and filter, `x` remove, `u` check updates
+* Vim-style: `j/k` move, `Enter` open, `C` switch an online book's source, `i` import, `o/r` sort and filter, `x` remove, `u` check updates
 * Arrow keys: `↑/↓` move, `→` or `Enter` open, `u` check updates
 
 ### Reading
 
-* Vim-style: `j/k` page down/up, `[` / `]` previous/next chapter, `/` search, `n/N` next/previous result, `s/B` bookmarks, `m` TOC, `c` text color, `z` compact/full UI, `u` check updates
+* Vim-style: `j/k` page down/up, `[` / `]` previous/next chapter, `/` search, `n/N` next/previous result, `s/B` bookmarks, `m` TOC, `C` switch an online book's source, `c` text color, `z` compact/full UI, `u` check updates
 * Arrow keys: `↑/↓` page down/up, `←/→` previous/next chapter, `z` compact/full UI, `u` check updates
 * Reading settings: press `,` to adjust alignment, content width, margins, line spacing, text color, high contrast mode, basic color mode, and auto-page interval
 
@@ -319,6 +321,14 @@ This directory contains:
 * `bookshelf.json`
 * `bookmarks.json`
 * `progress.json`
+* `book_sources.json`: complete source definitions and enabled states
+* `sessions.json`: source login sessions and script variables
+* `online_cache/`: online book catalogs and downloaded chapters
+* `replace_rules/`: editable `main.json` and separate imported cleanup rule files
+
+Press `P` from the bookshelf, reading view, or source manager to manage online chapter cleanup rules. Use `i` to import a Legado replacement-rule JSON URL/file and `r` to reload local edits. Imports are saved separately under `replace_rules/imports/`; edit `replace_rules/main.json` for personal rules, which run last. Returning to online reading reapplies rules from the original cache while preserving approximate chapter progress. Common HTML tags in online text, including older cached chapters, are converted to readable paragraphs automatically.
+
+Quit ReadCLI before copying the entire data directory for backup. To restore, keep the app closed, replace the directory contents with the backup, then restart. Sources, settings and reading data load automatically without importing sources again. Original local TXT / EPUB files need a separate backup. See [backup and restore](./docs/BOOK_SOURCES.md#整目录备份与恢复) (Chinese).
 
 `config.json` stores reading-related settings such as:
 
@@ -356,3 +366,11 @@ Related documents:
 ## License
 
 This project continues to use [Apache License 2.0](./LICENSE).
+
+## Book sources and online reading
+
+Press `S` on the bookshelf to manage Legado JSON sources, or `s` to search enabled sources. Import a local JSON file or a direct JSON URL, toggle sources with Space, and use `L` to log in / `X` to log out. Search results support pagination; Enter opens an online book and adds it to your shelf. Chapters are loaded asynchronously and cached for offline reopening. Reading progress and bookmarks retain chapter identity. See [compatibility and usage](./docs/BOOK_SOURCES.md).
+
+Search requests run across up to four sources at a time. Results appear as each source finishes, with completed and failed counts. Browse or open available books while other sources are still searching. Esc cancels remaining requests and keeps existing results; changing pages, starting another search, or opening a book cancels the previous search.
+
+Press uppercase `C` on a selected online book or while reading it to switch sources. Candidates show the source, author and latest chapter, including site information supplied by aggregate sources. Enter loads a preview of the matched chapter and reading position; Enter again confirms the replacement. The original book stays intact until confirmation. Progress and matching bookmarks migrate; unmatched bookmarks are retained and may require returning to the original source. Lowercase `c` still changes text color.

@@ -29,6 +29,10 @@ func AnchorFromReader(r Reader) ProgressAnchor {
 	}
 
 	switch v := r.(type) {
+	case *OnlineReader:
+		anchor.ChapterIndex = v.Index
+		anchor.ChapterOffset = v.ChapterOffset()
+		anchor.OverallRatio = v.OverallProgress()
 	case *TxtReader:
 		anchor.ChapterIndex = v.currentChapterIndex()
 		anchor.ChapterOffset = txtChapterOffset(v)
@@ -46,6 +50,9 @@ func RestoreFromAnchor(r Reader, anchor ProgressAnchor) {
 	}
 
 	switch v := r.(type) {
+	case *OnlineReader:
+		v.RestoreOffset(anchor.ChapterOffset)
+		return
 	case *TxtReader:
 		if restoreTXTFromAnchor(v, anchor) {
 			return

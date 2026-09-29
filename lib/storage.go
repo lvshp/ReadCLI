@@ -8,6 +8,8 @@ import (
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/lvshp/ReadCLI/booksource"
 )
 
 type Config struct {
@@ -32,17 +34,19 @@ type Config struct {
 }
 
 type BookshelfBook struct {
-	Path            string  `json:"path"`
-	Title           string  `json:"title"`
-	Format          string  `json:"format"`
-	ProgressPos     int     `json:"progress_pos"`
-	ProgressTotal   int     `json:"progress_total"`
-	ProgressPercent int     `json:"progress_percent"`
-	CurrentChapter  string  `json:"current_chapter"`
-	ChapterIndex    int     `json:"chapter_index"`
-	ChapterOffset   float64 `json:"chapter_offset"`
-	LastReadAt      string  `json:"last_read_at"`
-	ImportedAt      string  `json:"imported_at"`
+	Online          *booksource.Book `json:"online,omitempty"`
+	ChapterURL      string           `json:"chapter_url,omitempty"`
+	Path            string           `json:"path"`
+	Title           string           `json:"title"`
+	Format          string           `json:"format"`
+	ProgressPos     int              `json:"progress_pos"`
+	ProgressTotal   int              `json:"progress_total"`
+	ProgressPercent int              `json:"progress_percent"`
+	CurrentChapter  string           `json:"current_chapter"`
+	ChapterIndex    int              `json:"chapter_index"`
+	ChapterOffset   float64          `json:"chapter_offset"`
+	LastReadAt      string           `json:"last_read_at"`
+	ImportedAt      string           `json:"imported_at"`
 }
 
 type BookshelfStore struct {
@@ -50,12 +54,14 @@ type BookshelfStore struct {
 }
 
 type Bookmark struct {
-	Path          string `json:"path"`
-	Position      int    `json:"position"`
-	Chapter       string `json:"chapter"`
-	Snippet       string `json:"snippet"`
-	CreatedAt     string `json:"created_at"`
-	ProgressTotal int    `json:"progress_total"`
+	ChapterURL    string  `json:"chapter_url,omitempty"`
+	ChapterOffset float64 `json:"chapter_offset,omitempty"`
+	Path          string  `json:"path"`
+	Position      int     `json:"position"`
+	Chapter       string  `json:"chapter"`
+	Snippet       string  `json:"snippet"`
+	CreatedAt     string  `json:"created_at"`
+	ProgressTotal int     `json:"progress_total"`
 }
 
 type BookmarkStore struct {
@@ -410,16 +416,16 @@ func FilterBooks(books []BookshelfBook, filter string) []BookshelfBook {
 	filtered := make([]BookshelfBook, 0, len(books))
 	for _, book := range books {
 		switch filter {
-		case "txt", "epub":
+		case "txt", "epub", "online":
 			if strings.EqualFold(book.Format, filter) {
 				filtered = append(filtered, book)
 			}
 		case "unread":
-			if book.ProgressPos <= 0 {
+			if book.ProgressPos <= 0 && !(book.Online != nil && book.ChapterIndex > 0) {
 				filtered = append(filtered, book)
 			}
 		case "reading":
-			if book.ProgressPos > 0 && book.ProgressPercent < 100 {
+			if (book.ProgressPos > 0 || (book.Online != nil && book.ChapterIndex > 0)) && book.ProgressPercent < 100 {
 				filtered = append(filtered, book)
 			}
 		case "finished":

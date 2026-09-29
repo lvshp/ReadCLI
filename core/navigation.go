@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/lvshp/ReadCLI/lib"
+	"github.com/lvshp/ReadCLI/reader"
 )
 
 func moveShelf(delta int) {
@@ -46,6 +47,17 @@ func openSelectedBookmark() {
 	}
 	if app.readingState.bookmarkIndex >= len(bookmarks) {
 		app.readingState.bookmarkIndex = len(bookmarks) - 1
+	}
+	if r, ok := app.reader.(*reader.OnlineReader); ok {
+		mark := bookmarks[app.readingState.bookmarkIndex]
+		for i, c := range r.Chapters {
+			if c.URL == mark.ChapterURL {
+				openOnlineChapter(i, mark.ChapterOffset)
+				return
+			}
+		}
+		setStatus(statusError, "书签章节已不在目录中")
+		return
 	}
 	app.reader.Goto(bookmarks[app.readingState.bookmarkIndex].Position)
 	transitionTo(modeReading)
@@ -144,6 +156,10 @@ func openSelectedTOCChapter() {
 	if index, ok := parseTOCNumber(); ok {
 		app.readingState.tocIndex = index
 	}
+	if _, ok := app.reader.(*reader.OnlineReader); ok {
+		openOnlineChapter(app.readingState.tocIndex, 0)
+		return
+	}
 	app.reader.GotoChapter(app.readingState.tocIndex)
 	transitionTo(modeReading)
 	app.readingState.tocNumber = ""
@@ -154,6 +170,19 @@ func openSelectedTOCChapter() {
 func moveReading(delta int) {
 	if app.reader == nil {
 		return
+	}
+	if r, ok := app.reader.(*reader.OnlineReader); ok {
+		if app.online.busy != "" {
+			return
+		}
+		if delta > 0 && r.CurrentPos()+delta >= r.Total() && r.Index+1 < len(r.Chapters) {
+			openOnlineChapter(r.Index+1, 0)
+			return
+		}
+		if delta < 0 && r.CurrentPos()+delta < 0 && r.Index > 0 {
+			openOnlineChapter(r.Index-1, 1)
+			return
+		}
 	}
 	app.reader.Goto(app.reader.CurrentPos() + delta)
 	app.readingState.showHelp = false
@@ -181,6 +210,11 @@ func saveBookmark() {
 		Snippet:       shorten(app.reader.Current(), 32),
 		CreatedAt:     time.Now().Format(time.RFC3339),
 		ProgressTotal: app.reader.Total(),
+	}
+	if r, ok := app.reader.(*reader.OnlineReader); ok {
+		mark.ChapterURL = r.Chapters[r.Index].URL
+		mark.Chapter = r.Chapters[r.Index].Name
+		mark.ChapterOffset = r.ChapterOffset()
 	}
 	list = append(list, mark)
 	app.bookmarks.Books[app.currentFile] = list
@@ -274,6 +308,12 @@ func runReadingJump() {
 			setStatus(statusError, "百分比需在 0% 到 100% 之间")
 			return
 		}
+		if r, ok := app.reader.(*reader.OnlineReader); ok {
+			target := percent / 100 * float64(len(r.Chapters))
+			index := min(int(target), len(r.Chapters)-1)
+			openOnlineChapter(index, math.Min(1, target-float64(index)))
+			return
+		}
 		total := app.reader.Total()
 		pos := 0
 		if total > 1 {
@@ -289,6 +329,10 @@ func runReadingJump() {
 	chapter, err := strconv.Atoi(target)
 	if err != nil || chapter <= 0 {
 		setStatus(statusError, "请输入章节号或百分比，例如 128 / 50%")
+		return
+	}
+	if _, ok := app.reader.(*reader.OnlineReader); ok {
+		openOnlineChapter(chapter-1, 0)
 		return
 	}
 	app.reader.GotoChapter(chapter - 1)
@@ -337,6 +381,12 @@ func jumpSearch(forward bool) {
 }
 
 func transitionTo(m mode) {
+	withinSearch := app.online.searching &&
+		(app.mode == modeOnlineResults || app.mode == modeOnlineErrors) &&
+		(m == modeOnlineResults || m == modeOnlineErrors)
+	if m != app.mode && app.online.busy != "" && !withinSearch {
+		cancelOnlineRequest()
+	}
 	app.mode = m
 	resetInputState()
 	app.readingState.rowNumber = ""
@@ -358,7 +408,7 @@ func cycleSort() {
 }
 
 func cycleFilter() {
-	options := []string{"all", "epub", "txt", "unread", "reading", "finished"}
+	options := []string{"all", "epub", "txt", "online", "unread", "reading", "finished"}
 	for i, opt := range options {
 		if opt == app.bookshelfState.filterMode {
 			app.bookshelfState.filterMode = options[(i+1)%len(options)]

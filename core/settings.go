@@ -272,6 +272,13 @@ func persistState() {
 	if app == nil {
 		return
 	}
+	if app.online.client != nil {
+		dir, err := lib.DataDirPath()
+		if err == nil {
+			err = app.online.client.SaveSessions(dir)
+		}
+		notePersistenceError("保存书源会话", err)
+	}
 	if app.readingState.ticker != nil {
 		app.readingState.ticker.Stop()
 		app.readingState.ticker = nil

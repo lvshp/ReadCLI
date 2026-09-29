@@ -31,7 +31,8 @@ func buildBookshelfPanel() string {
 			"",
 			"开始方式：",
 			"  1. 按 i 导入本地 txt / epub",
-			"  2. 或直接运行 readcli /path/to/book.epub",
+			"  2. 按 S 管理书源，再按 s 在线搜书",
+			"  3. 或直接运行 readcli /path/to/book.epub",
 			"",
 			"导入后会自动记录：",
 			"  - 阅读进度",
@@ -73,7 +74,7 @@ func buildBookshelfPanel() string {
 		if i == app.bookshelfState.shelfIndex {
 			prefix = "> "
 		}
-		lines = append(lines, prefix+shortenDisplay(book.Title, titleWidth))
+		lines = append(lines, prefix+shortenDisplay(remoteLabel(book.Title), titleWidth))
 	}
 	return strings.Join(lines, "\n")
 }
@@ -100,7 +101,7 @@ func bookshelfStatsLine(books []lib.BookshelfBook) string {
 		switch {
 		case book.ProgressPercent >= 100:
 			finished++
-		case book.ProgressPos > 0:
+		case book.ProgressPos > 0 || (book.Online != nil && book.ChapterIndex > 0):
 			reading++
 		default:
 			unread++

@@ -1,6 +1,8 @@
 package core
 
 import (
+	"context"
+	"github.com/lvshp/ReadCLI/booksource"
 	"regexp"
 	"time"
 
@@ -13,6 +15,17 @@ import (
 type mode string
 
 const (
+	modePurification         mode = "purification"
+	modePurificationImport   mode = "purification_import"
+	modeSourceSwitch         mode = "source_switch"
+	modeSourceSwitchConfirm  mode = "source_switch_confirm"
+	modeOnlineErrors         mode = "online_errors"
+	modeSourceLogin          mode = "source_login"
+	modeSources              mode = "sources"
+	modeSourceImport         mode = "source_import"
+	modeSourceDelete         mode = "source_delete"
+	modeOnlineSearchInput    mode = "online_search_input"
+	modeOnlineResults        mode = "online_results"
 	modeHome                 mode = "home"
 	modeReading              mode = "reading"
 	modeTOC                  mode = "toc"
@@ -129,8 +142,35 @@ type uiState struct {
 	showBorder              bool
 }
 
+type onlineState struct {
+	errorIndex  int
+	loginFields []booksource.LoginField
+	loginValues map[string]string
+	loginIndex  int
+	sources     []booksource.Source
+	client      *booksource.Client
+	sourceIndex int
+	resultIndex int
+	results     []booksource.Book
+	errors      []string
+	keyword     string
+	page        int
+	scopeURL    string
+	busy        string
+	cancel      context.CancelFunc
+	requestID   uint64
+	searching   bool
+	searchTotal int
+	searchDone  int
+	// Tests can provide a serial UI queue; workers capture it when a request starts.
+	enqueue func(func())
+}
+
 type appState struct {
-	mode mode
+	purification purificationState
+	sourceSwitch sourceSwitchState
+	online       onlineState
+	mode         mode
 
 	reader      reader.Reader
 	currentFile string

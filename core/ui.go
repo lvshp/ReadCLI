@@ -73,6 +73,8 @@ func Run(initialFile string, requestedLines int, version string) {
 		app.bookmarks.Books = map[string][]lib.Bookmark{}
 	}
 
+	initOnline()
+	initPurification()
 	initWidgets()
 	refreshChrome()
 
@@ -147,6 +149,7 @@ func Run(initialFile string, requestedLines int, version string) {
 	}()
 
 	err := tApp.Run()
+	cancelOnlineRequest()
 	persistState()
 	if err != nil {
 		log.Fatalf("failed to start application: %v", err)

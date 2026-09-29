@@ -6,7 +6,7 @@
 [![CI](https://img.shields.io/github/actions/workflow/status/lvshp/ReadCLI/go.yml?branch=main&label=CI)](https://github.com/lvshp/ReadCLI/actions/workflows/go.yml)
 [![License](https://img.shields.io/badge/license-Apache%202.0-blue.svg)](./LICENSE)
 
-ReadCLI 是一个终端阅读器，支持 `TXT` 和 `EPUB`，带本地书架、进度保存、书签、搜索，以及几套偏 IDE 风格的界面。基于 [tcell](https://github.com/gdamore/tcell) 和 [tview](https://github.com/rivo/tview) 构建，支持 macOS、Linux 和 Windows。
+ReadCLI 是一个终端阅读器，支持本地 `TXT` / `EPUB` 和基于 Legado 书源的在线阅读，带书架、书源管理、登录、进度保存、书签、搜索，以及几套偏 IDE 风格的界面。基于 [tcell](https://github.com/gdamore/tcell) 和 [tview](https://github.com/rivo/tview) 构建，支持 macOS、Linux 和 Windows。
 
 ## 页面展示
 
@@ -42,7 +42,7 @@ ReadCLI 是一个终端阅读器，支持 `TXT` 和 `EPUB`，带本地书架、�
 * 支持 `EPUB`
 * 自动恢复上次阅读位置
 * 支持章节目录、上一章 / 下一章跳转
-* 支持全文搜索，`n / N` 跳转结果
+* 支持本地全文搜索；在线阅读搜索当前章节，`n / N` 跳转结果
 * 支持当前页搜索结果高亮
 * 支持书签保存、查看、删除、跳转
 * 支持按页滚动和自定义每页显示行数
@@ -131,6 +131,8 @@ ReadCLI 基于 tcell v2 构建，原生支持 Unicode 边框和 CJK 字符宽度
 预编译包：
 
 * [Releases 页面](https://github.com/lvshp/ReadCLI/releases)
+
+`dev` 分支的自动测试包标记为 **Pre-release**，稳定版保持 **Latest**。开发版需在 Releases 手动下载，应用内更新只获取稳定版。构建触发方式和说明文件见[发布指南](./CONTRIBUTING.md#发布说明)。
 
 当前已提供：
 
@@ -277,12 +279,12 @@ Windows 示例：
 
 ### 书架首页
 
-* Vim 风格：`j/k` 移动，`Enter` 打开，`i` 导入，`o/r` 排序过滤，`x` 移除，`u` 检查更新
+* Vim 风格：`j/k` 移动，`Enter` 打开，`C` 更换在线书源，`i` 导入，`o/r` 排序过滤，`x` 移除，`u` 检查更新
 * 普通键位：`↑/↓` 移动，`→` 或 `Enter` 打开，`u` 检查更新
 
 ### 阅读界面
 
-* Vim 风格：`j/k` 翻页，`[` / `]` 切章，`/` 搜索，`n/N` 跳转结果，`s/B` 书签，`m` 目录，`c` 切换颜色，`z` 精简/全信息，`u` 检查更新
+* Vim 风格：`j/k` 翻页，`[` / `]` 切章，`/` 搜索，`n/N` 跳转结果，`s/B` 书签，`m` 目录，`C` 更换在线书源，`c` 切换颜色，`z` 精简/全信息，`u` 检查更新
 * 普通键位：`↑/↓` 翻页，`←/→` 切章，`z` 精简/全信息，`u` 检查更新
 * 阅读设置：按 `,` 打开设置面板，可调整正文对齐、正文宽度、边距、行间距、字体颜色、高对比、基础色模式和自动翻页间隔
 
@@ -305,6 +307,18 @@ Windows 示例：
 * `f` 显示或隐藏边框
 * `q` 返回书架或退出程序
 
+## 书源与在线阅读
+
+书架按 `S` 管理 Legado 书源，按 `s` 在线搜索。支持本地 JSON 或链接导入、书源启停、登录、搜索分页、在线目录和按章阅读缓存。管理页按 `L` 登录、`X` 退出登录。
+
+多书源搜索最多并发请求 4 个源，结果随各书源完成即时追加，并显示完成和失败数量。搜索中可以浏览已有结果、按 Enter 开始阅读；按 Esc 取消剩余搜索并保留结果。翻页、重搜或打开书籍会取消上一轮搜索。
+
+书架选中在线书籍或在线阅读时按大写 `C` 换源。候选列表显示书源、作者及最新章节，Enter 预览章节匹配与章内进度，再按 Enter 确认替换。确认前保留原书；确认后迁移进度及匹配书签，未匹配书签保留，可能需要回原源查看。
+
+大写 `P` 管理在线阅读的净化替换规则，`i` 导入 Legado 规则 JSON，`r` 重读配置。导入规则分别保存于 `replace_rules/imports/`，本地编辑使用 `replace_rules/main.json`；修改后返回阅读即可重新应用，原始缓存保留。在线正文和旧缓存中的 HTML 段落标签会自动转换为阅读文本。
+
+详细操作和规则兼容范围见 [书源与在线阅读](./docs/BOOK_SOURCES.md)。
+
 ## 数据保存位置
 
 本地数据默认保存在：
@@ -320,6 +334,12 @@ Windows 示例：
 * `bookshelf.json`
 * `bookmarks.json`
 * `progress.json`
+* `book_sources.json`：完整书源定义和启用状态
+* `sessions.json`：书源登录会话和脚本变量
+* `online_cache/`：在线书籍目录和已读取章节
+* `replace_rules/`：本地主配置 `main.json` 与分开存放的导入净化规则
+
+备份时先正常退出，再复制整个数据目录；恢复时关闭程序，用备份内容替换该目录，重新启动即可自动加载书源、设置和阅读数据，无需重新导入书源。本地 TXT / EPUB 原文件仍需单独备份。详见 [整目录备份与恢复](./docs/BOOK_SOURCES.md#整目录备份与恢复)。
 
 其中 `config.json` 里会保存阅读样式相关设置，例如：
 

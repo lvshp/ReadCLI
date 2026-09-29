@@ -23,6 +23,7 @@ func openBook(path string) error {
 }
 
 func applyLoadedBook(path string, r reader.Reader) {
+	cancelOnlineRequest()
 	// Normalize existing bookshelf entries whose path resolves to the same file.
 	// On Windows, paths may differ only by case (e.g. C:\A\B vs c:\a\b).
 	for i := range app.bookshelf.Books {
@@ -142,6 +143,15 @@ func syncCurrentBookState() {
 	if existing, ok := lib.FindBookshelfBook(app.bookshelf, app.currentFile); ok {
 		book.ImportedAt = existing.ImportedAt
 	}
+	if r, ok := app.reader.(*reader.OnlineReader); ok {
+		onlineBook := r.Book
+		book.Online = &onlineBook
+		book.Format = "online"
+		book.Title = r.Book.Name
+		book.ChapterURL = r.Chapters[r.Index].URL
+		book.CurrentChapter = r.Chapters[r.Index].Name
+		book.ProgressPercent = int(r.OverallProgress() * 100)
+	}
 	lib.UpsertBookshelfBook(app.bookshelf, book)
 	app.progress.Books[app.currentFile] = anchor.Pos
 	if app.progress.Anchors == nil {
@@ -158,9 +168,14 @@ func syncCurrentBookState() {
 }
 
 func openSelectedBook() {
+	cancelOnlineRequest()
 	book := selectedBook()
 	if book == nil {
 		setStatus(statusError, "书架为空")
+		return
+	}
+	if book.Online != nil {
+		openOnlineBook(*book.Online)
 		return
 	}
 	path := normalizeBookPath(book.Path)

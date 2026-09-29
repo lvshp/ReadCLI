@@ -4,6 +4,7 @@ import (
 	"strings"
 
 	"github.com/lvshp/ReadCLI/lib"
+	"github.com/lvshp/ReadCLI/reader"
 )
 
 func handleHomeEvent(id string) {
@@ -18,6 +19,14 @@ func handleHomeEvent(id string) {
 		moveShelf(-1)
 	case "<Enter>", "<Right>":
 		openSelectedBook()
+	case "S":
+		openSources()
+	case "s":
+		startOnlineSearch(false)
+	case "C":
+		openSourceSwitch()
+	case "P":
+		openPurification()
 	case "i":
 		transitionTo(modeImportInput)
 	case "/":
@@ -40,8 +49,27 @@ func handleHomeEvent(id string) {
 }
 
 func handleReadingEvent(id string) {
+	if id == "<Escape>" && app.online.busy != "" {
+		cancelOnlineRequest()
+		setStatus(statusInfo, "已取消加载")
+		return
+	}
+	if _, ok := app.reader.(*reader.OnlineReader); ok {
+		switch id {
+		case "[", "<Left>":
+			openOnlineChapter(app.reader.CurrentChapterIndex()-1, 0)
+			return
+		case "]", "<Right>":
+			openOnlineChapter(app.reader.CurrentChapterIndex()+1, 0)
+			return
+		case "R":
+			refreshOnlineTOC()
+			return
+		}
+	}
 	switch id {
 	case "q", "<C-c>":
+		cancelOnlineRequest()
 		syncCurrentBookState()
 		transitionTo(modeHome)
 		setStatus(statusInfo, "已回到书架")
@@ -91,6 +119,10 @@ func handleReadingEvent(id string) {
 		setDisplayLines(app.readingState.displayLines - 1)
 	case "c":
 		cycleReadingColorPreset()
+	case "C":
+		openSourceSwitch()
+	case "P":
+		openPurification()
 	case "a":
 		cycleReadingAlignment(1)
 	case "t":
@@ -304,6 +336,23 @@ func handleUpdateRestartEvent(id string) {
 }
 
 func dispatchEvent(id string) {
+	if isPurificationMode(app.mode) {
+		handlePurificationEvent(id)
+		return
+	}
+	if app.mode == modeSourceSwitch || app.mode == modeSourceSwitchConfirm {
+		handleSourceSwitchEvent(id)
+		return
+	}
+	if app.online.busy != "" {
+		if id == "<Escape>" {
+			cancelOnlineWithStatus()
+			return
+		}
+		if (id == "q" && !(app.online.searching && app.mode == modeOnlineErrors)) || id == "<C-c>" {
+			cancelOnlineRequest()
+		}
+	}
 	switch {
 	case isInputMode(app.mode):
 		dispatchInputEvent(id)
@@ -315,6 +364,10 @@ func dispatchEvent(id string) {
 }
 
 func dispatchSceneEvent(id string) {
+	if isOnlineMode(app.mode) {
+		handleOnlineEvent(id)
+		return
+	}
 	switch app.mode {
 	case modeHome:
 		handleHomeEvent(id)
@@ -332,6 +385,27 @@ func dispatchSceneEvent(id string) {
 }
 
 func dispatchInputEvent(id string) {
+	if app.mode == modeSourceLogin {
+		handleSourceLoginEvent(id)
+		return
+	}
+	if app.mode == modeSourceImport || app.mode == modeOnlineSearchInput {
+		if id == "<Escape>" {
+			cancelOnlineRequest()
+			if app.mode == modeSourceImport {
+				transitionTo(modeSources)
+			} else {
+				transitionTo(modeOnlineResults)
+			}
+			return
+		}
+		if app.mode == modeSourceImport {
+			handleTextInputEvent(id, importSources)
+		} else {
+			handleTextInputEvent(id, runOnlineSearch)
+		}
+		return
+	}
 	switch app.mode {
 	case modeSearchInput:
 		handleTextInputEvent(id, runSearch)
@@ -361,7 +435,7 @@ func dispatchUpdateEvent(id string) {
 
 func isInputMode(m mode) bool {
 	switch m {
-	case modeSearchInput, modeBookshelfSearchInput, modeReadingJumpInput, modeImportInput, modeReadingColorInput:
+	case modePurificationImport, modeSourceLogin, modeSourceImport, modeOnlineSearchInput, modeSearchInput, modeBookshelfSearchInput, modeReadingJumpInput, modeImportInput, modeReadingColorInput:
 		return true
 	default:
 		return false

@@ -1,6 +1,7 @@
 package core
 
 import (
+	"github.com/lvshp/ReadCLI/reader"
 	"strings"
 	"time"
 )
@@ -19,8 +20,18 @@ func refreshChrome() {
 	header.SetText(termuiStyleToTview(buildHeader(th)))
 	left.SetText(termuiStyleToTview(buildLeftPanel(th)))
 	right.SetText(termuiStyleToTview(buildRightPanel(th)))
-	main.SetText(termuiStyleToTview(buildMainPanel()))
+	mainText := buildMainPanel()
+	_, onlineReader := app.reader.(*reader.OnlineReader)
+	if app.mode == modeReading && onlineReader && !app.readingState.showHelp && !app.readingState.showProgress {
+		main.SetText(mainText)
+	} else {
+		main.SetText(termuiStyleToTview(mainText))
+	}
 	footer.SetText(termuiStyleToTview(buildFooter()))
+	header.ScrollToBeginning()
+	left.ScrollToBeginning()
+	right.ScrollToBeginning()
+	footer.ScrollToBeginning()
 
 	main.SetTitle(buildMainTitle())
 	left.SetTitle(" " + th.LeftName + " ")
@@ -65,7 +76,8 @@ func refreshChrome() {
 		main.SetScrollable(true)
 		main.ScrollToBeginning()
 	default:
-		main.SetScrollable(false)
+		main.SetScrollable(true)
+		main.ScrollToBeginning()
 	}
 }
 

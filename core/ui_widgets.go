@@ -26,6 +26,7 @@ func initWidgets() {
 		tv.SetTextColor(tcell.ColorWhite)
 		tv.SetBorder(true)
 		tv.SetBackgroundColor(tcell.ColorDefault)
-		tv.SetScrollable(false)
+		// Keep the first lines visible; input is handled by the application.
+		tv.SetScrollable(true)
 	}
 }

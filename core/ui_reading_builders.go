@@ -23,7 +23,7 @@ func buildBookmarksPanel() string {
 		if i == app.readingState.bookmarkIndex {
 			prefix = "> "
 		}
-		lines = append(lines, fmt.Sprintf("%s%s | %s", prefix, shorten(mark.Chapter, 16), shorten(mark.Snippet, 36)))
+		lines = append(lines, fmt.Sprintf("%s%s | %s", prefix, shorten(remoteLabel(mark.Chapter), 16), shorten(remoteLabel(mark.Snippet), 36)))
 		if i < len(bookmarks)-1 {
 			lines = append(lines, "")
 		}
@@ -33,15 +33,15 @@ func buildBookmarksPanel() string {
 
 func buildHelpPanel() string {
 	if mainContentWidth < 72 {
-		return menuText
+		return "在线书籍：书架或阅读时按 C 更换书源\n\n" + menuText
 	}
 
 	leftTitle := "[Vim 风格](fg:cyan,mod:bold)"
 	rightTitle := "[方向键 / 普通键](fg:yellow,mod:bold)"
 
 	leftSections := []string{
-		"[书架首页](fg:green,mod:bold)\n  j/k 移动  i 导入  o 排序\n  r 过滤  x 移除  ? 帮助  q 退出",
-		"[阅读界面](fg:green,mod:bold)\n  j/k 翻页  [/] 切章  / 搜索\n  n/N 搜索跳转  s 书签  B 书签列表\n  m 目录  p 进度  , 阅读设置\n  a 正文对齐  c 字体颜色  t 自动翻页\n  b Boss Key  z 精简/全信息\n  T 主题  +/- 行数",
+		"[书架首页](fg:green,mod:bold)\n  j/k 移动  i 导入  S 书源  s 在线搜书\n  C 换源  o 排序  r 过滤  x 移除\n  ? 帮助  q 退出",
+		"[阅读界面](fg:green,mod:bold)\n  j/k 翻页  [/] 切章  / 搜索\n  n/N 搜索跳转  s 书签  B 书签列表\n  m 目录  p 进度  , 阅读设置\n  a 正文对齐  c 字体颜色  C 换源\n  t 自动翻页  b Boss Key  z 精简/全信息\n  T 主题  +/- 行数",
 		"[目录](fg:green,mod:bold)\n  j/k 移动  Enter 打开  m 返回\n  0-9 页码输入",
 		"[书签列表](fg:green,mod:bold)\n  j/k 移动  d 删除  Enter 打开\n  B/q 返回",
 		"[通用](fg:green,mod:bold)\n  f 切换边框  T 切换主题\n  z 精简/全信息  u 检查更新\n  q 返回/退出",
@@ -120,6 +120,9 @@ func tocStatusText() string {
 		return ""
 	}
 	text := app.reader.GetTOCWithSelection(app.readingState.tocIndex, tocPageSize())
+	if strings.HasPrefix(app.currentFile, "online:") {
+		text = strings.NewReplacer("[", "［", "]", "］").Replace(text)
+	}
 	if app.readingState.tocNumber == "" {
 		return text
 	}
