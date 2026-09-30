@@ -221,7 +221,12 @@ func buildFooter() string {
 	case modeUpdating:
 		return line1 + "\n正在下载安装新版本，请稍候…"
 	case modeUpdateRestart:
+		if app.updateState.pendingExit {
+			return line1 + "\n[Enter/q](fg:cyan):退出并自动安装更新"
+		}
 		return line1 + "\n[Enter](fg:cyan):退出并手动重新启动  [q](fg:red):直接退出"
+	case modeUpdateError:
+		return line1 + "\n↑/↓ 滚动 · 空格 下一页 · g/G 首尾 · Esc/Enter 返回"
 	default:
 		return line1 + "\n[q](fg:red):退出"
 	}
@@ -264,7 +269,7 @@ func buildMainTitle() string {
 		return " bookshelf search "
 	case modeReadingJumpInput:
 		return " jump "
-	case modeUpdatePrompt, modeUpdating, modeUpdateRestart:
+	case modeUpdatePrompt, modeUpdating, modeUpdateRestart, modeUpdateError:
 		return " update "
 	default:
 		return " editor: " + currentDisplayName() + " "
@@ -334,6 +339,8 @@ func buildMainPanel() string {
 		return buildUpdatingPanel()
 	case modeUpdateRestart:
 		return buildUpdateRestartPanel()
+	case modeUpdateError:
+		return buildUpdateErrorPanel()
 	default:
 		if app.reader == nil {
 			return "未打开书籍"

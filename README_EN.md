@@ -234,6 +234,8 @@ If you skip an update from the automatic prompt, that version will not be shown 
 
 When you confirm an update, ReadCLI downloads the correct release package for the current platform and replaces the current binary. During the update it shows the download percentage, progress bar, downloaded size, and install stage. Restart the app after the update finishes.
 
+On Windows, the new executable is staged in the installation directory first. Once the update is ready, press Enter to exit; an update helper replaces the executable after ReadCLI exits. Protected directories such as `Program Files` require administrator approval. Cancelling that approval preserves the existing executable. Failures show scrollable details and the location of recovery files. Versions 0.3.5/0.3.6 with the older updater may need one manual replacement to receive the fix for directory permissions and cross-volume updates.
+
 ### 6. Configure Boss Key
 
 By default, pressing `b` switches to the built-in disguise page.

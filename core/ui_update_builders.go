@@ -2,9 +2,11 @@ package core
 
 import (
 	"fmt"
+	"runtime"
 	"strings"
 
 	"github.com/lvshp/ReadCLI/lib"
+	"github.com/rivo/tview"
 )
 
 func buildUpdatePromptPanel() string {
@@ -15,6 +17,12 @@ func buildUpdatePromptPanel() string {
 	if body == "" {
 		body = "本次版本未提供额外说明。"
 	}
+	question := "是否现在下载并替换当前程序？"
+	nextStep := "更新完成后退出，再重新启动即可生效。"
+	if runtime.GOOS == "windows" {
+		question = "是否现在下载并准备更新？"
+		nextStep = "准备完成后退出，由更新助手自动替换。受保护目录需要管理员授权。"
+	}
 	lines := []string{
 		"发现新版本",
 		"",
@@ -22,8 +30,8 @@ func buildUpdatePromptPanel() string {
 		fmt.Sprintf("最新版本：%s", app.updateState.release.TagName),
 		fmt.Sprintf("当前二进制：%s", emptyFallback(shortenDisplay(lib.CurrentExecutablePath(), 56), "未知")),
 		"",
-		"是否现在下载并替换当前程序？",
-		"更新完成后退出，再重新启动即可生效。",
+		question,
+		nextStep,
 		"",
 		"更新说明：",
 	}
@@ -60,10 +68,14 @@ func buildUpdatingPanel() string {
 			lines = append(lines, "已下载："+formatBytes(progress.Downloaded))
 		}
 	}
+	nextStep := "更新完成后会提示你退出并重新启动生效。"
+	if runtime.GOOS == "windows" {
+		nextStep = "准备完成后会提示退出，再由更新助手安装。请留意系统管理员授权窗口。"
+	}
 	lines = append(lines,
 		"",
 		"ReadCLI 正在从 GitHub Releases 下载并替换当前程序。",
-		"更新完成后会提示你退出并重新启动生效。",
+		nextStep,
 	)
 	return strings.Join(lines, "\n")
 }
@@ -72,6 +84,17 @@ func buildUpdateRestartPanel() string {
 	version := "新版本"
 	if app.updateState.release != nil && app.updateState.release.TagName != "" {
 		version = app.updateState.release.TagName
+	}
+	if app.updateState.pendingExit {
+		return strings.Join([]string{
+			"更新文件已准备",
+			"",
+			"目标版本：" + version,
+			"",
+			"按 Enter 退出 ReadCLI，更新助手会自动替换程序。",
+			"稍等片刻后，再启动 ReadCLI。",
+			"若安装失败，系统会弹出完整错误及恢复文件位置。",
+		}, "\n")
 	}
 	return strings.Join([]string{
 		"更新已安装",
@@ -98,9 +121,53 @@ func updateProgressLabel(progress lib.UpdateProgress) string {
 		return "解压更新包..."
 	case lib.UpdateStageReplace:
 		return "替换当前程序..."
+	case lib.UpdateStagePrepare:
+		return "准备更新文件，可能需要 Windows 管理员授权..."
 	default:
 		return "准备下载更新包..."
 	}
+}
+
+func updateErrorLines() []string {
+	message := "未提供具体错误。"
+	if app.updateState.failure != nil {
+		message = app.updateState.failure.Error()
+	}
+	paragraphs := []string{
+		"失败原因：", message,
+		"当前程序：", emptyFallback(lib.CurrentExecutablePath(), "未知"),
+		"处理方法：",
+		"若提示权限不足，请允许 Windows 管理员授权，或将 ReadCLI 安装到当前用户可写的目录。",
+		"若更新文件已保留，也可退出 ReadCLI 后，以有写入权限的账户将新程序复制到上方路径。",
+		"请根据完整错误检查目录权限、磁盘空间或被占用的文件，返回后按 u 重新检查更新。",
+	}
+	var lines []string
+	for _, paragraph := range paragraphs {
+		lines = append(lines, wrapDisplayLines(paragraph, max(8, mainContentWidth))...)
+		lines = append(lines, "")
+	}
+	return lines
+}
+
+func updateErrorPageSize() int {
+	return max(1, mainContentHeight-2)
+}
+
+func moveUpdateErrors(delta int) {
+	last := max(0, len(updateErrorLines())-updateErrorPageSize())
+	app.updateState.errorScroll = clamp(app.updateState.errorScroll+delta, 0, last)
+}
+
+func buildUpdateErrorPanel() string {
+	lines := updateErrorLines()
+	size := updateErrorPageSize()
+	start := clamp(app.updateState.errorScroll, 0, max(0, len(lines)-size))
+	app.updateState.errorScroll = start
+	page := []string{fmt.Sprintf("更新失败 %d/%d", start+1, len(lines)), "↑/↓ 滚动 · Esc/Enter 返回"}
+	page = append(page, lines[start:min(start+size, len(lines))]...)
+	// Errors can contain bracketed directory names. Keep paths literal instead
+	// of interpreting them as tview colors or the legacy termui markup.
+	return tview.Escape(strings.Join(page, "\n"))
 }
 
 func updateProgressPercent(progress lib.UpdateProgress) int {

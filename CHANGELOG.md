@@ -24,6 +24,12 @@
 
 - 从仓库移除 `CLAUDE.md`，并加入 `.gitignore` 避免再次提交
 
+## [v0.3.7] - 2026-09-30
+
+### 修复
+
+- 修复windows 自动更新跨盘无权限问题（[#3](https://github.com/lvshp/ReadCLI/issues/3)）
+
 ## [v0.3.6] - 2026-09-10
 
 ### 新增

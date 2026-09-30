@@ -35,6 +35,7 @@ type ReleaseInfo struct {
 const (
 	UpdateStageDownload = "download"
 	UpdateStageExtract  = "extract"
+	UpdateStagePrepare  = "prepare"
 	UpdateStageReplace  = "replace"
 )
 
@@ -132,7 +133,17 @@ func InstallLatestReleaseAsset(version, url, executablePath string) error {
 	return InstallLatestReleaseAssetWithProgress(version, url, executablePath, nil)
 }
 
+// On Windows, nil means the update helper has prepared the new executable and
+// will install it after this process exits. Other platforms install immediately.
 func InstallLatestReleaseAssetWithProgress(version, url, executablePath string, onProgress UpdateProgressFunc) error {
+	var prepareWindows func(string, string, string) error
+	if runtime.GOOS == "windows" {
+		prepareWindows = startWindowsDeferredUpdate
+	}
+	return installReleaseAssetWithClient(version, url, executablePath, onProgress, &http.Client{Timeout: 90 * time.Second}, prepareWindows)
+}
+
+func installReleaseAssetWithClient(version, url, executablePath string, onProgress UpdateProgressFunc, client *http.Client, prepareWindows func(string, string, string) error) error {
 	tempDir, err := os.MkdirTemp("", "readcli-update-*")
 	if err != nil {
 		return err
@@ -144,7 +155,6 @@ func InstallLatestReleaseAssetWithProgress(version, url, executablePath string, 
 		}
 	}()
 
-	client := &http.Client{Timeout: 90 * time.Second}
 	req, err := http.NewRequest(http.MethodGet, url, nil)
 	if err != nil {
 		return err
@@ -227,16 +237,16 @@ func InstallLatestReleaseAssetWithProgress(version, url, executablePath string, 
 		return &UpdateInstallError{Message: "关闭更新文件失败: " + err.Error(), TempDir: tempDir}
 	}
 
-	execDir := filepath.Dir(executablePath)
-	if probe, err := os.CreateTemp(execDir, "readcli-write-test-*"); err != nil {
+	if prepareWindows != nil {
+		reportUpdateProgress(onProgress, UpdateProgress{Stage: UpdateStagePrepare})
+		if err := prepareWindows(binaryPath, executablePath, tempDir); err != nil {
+			cleanup = false
+			return &UpdateInstallError{Message: "准备退出后更新失败: " + err.Error(), TempDir: tempDir}
+		}
+		// The helper owns the download directory until the parent has exited.
 		cleanup = false
-		return &UpdateInstallError{Message: "当前二进制目录不可写，无法自动覆盖", TempDir: tempDir}
-	} else {
-		probePath := probe.Name()
-		probe.Close()
-		_ = os.Remove(probePath)
+		return nil
 	}
-
 	reportUpdateProgress(onProgress, UpdateProgress{Stage: UpdateStageReplace})
 	if err := replaceExecutable(binaryPath, executablePath); err != nil {
 		cleanup = false
@@ -409,26 +419,92 @@ func parseSemverLike(version string) ([3]int, bool) {
 	return out, true
 }
 
-// replaceExecutable safely replaces the old binary with the new one.
-// On Windows, the running exe is locked and cannot be directly overwritten,
-// so it is renamed to a .old file first, then the new binary is moved in.
+// replaceExecutable stages a complete copy beside the installed executable so
+// every rename stays on the same volume, even when the download is in TEMP.
+// Keep the downloaded file intact for recovery if installation fails.
 func replaceExecutable(newPath, oldPath string) error {
-	if runtime.GOOS != "windows" {
-		return os.Rename(newPath, oldPath)
+	source, err := os.Open(newPath)
+	if err != nil {
+		return fmt.Errorf("打开下载的程序文件失败: %w", err)
+	}
+	defer source.Close()
+	info, err := source.Stat()
+	if err != nil {
+		return fmt.Errorf("读取下载的程序文件属性失败: %w", err)
+	}
+	stagedPath, err := stageExecutable(source, oldPath, info.Mode())
+	if err != nil {
+		return err
+	}
+	defer os.Remove(stagedPath)
+	return replaceStagedExecutable(stagedPath, oldPath, runtime.GOOS == "windows", os.Rename)
+}
+
+func stageExecutable(source io.Reader, executablePath string, mode os.FileMode) (path string, err error) {
+	file, err := os.CreateTemp(filepath.Dir(executablePath), "."+filepath.Base(executablePath)+".update-*")
+	if err != nil {
+		return "", fmt.Errorf("在程序安装目录创建暂存文件失败: %w", err)
+	}
+	path = file.Name()
+	defer func() {
+		if err != nil {
+			_ = file.Close()
+			_ = os.Remove(file.Name())
+		}
+	}()
+	if _, err = io.Copy(file, source); err != nil {
+		return "", fmt.Errorf("写入安装目录暂存文件失败: %w", err)
+	}
+	if err = file.Chmod(mode); err != nil {
+		return "", fmt.Errorf("设置暂存文件权限失败: %w", err)
+	}
+	if err = file.Sync(); err != nil {
+		return "", fmt.Errorf("同步暂存文件失败: %w", err)
+	}
+	if err = file.Close(); err != nil {
+		return "", fmt.Errorf("关闭暂存文件失败: %w", err)
+	}
+	return path, nil
+}
+
+// The rename parameter allows fault tests to exercise the Windows recovery
+// sequence on every platform without changing process-wide filesystem hooks.
+func replaceStagedExecutable(stagedPath, oldPath string, windows bool, rename func(string, string) error) error {
+	if !windows {
+		if err := rename(stagedPath, oldPath); err != nil {
+			return fmt.Errorf("替换程序文件失败: %w", err)
+		}
+		return nil
 	}
 
-	oldBackup := oldPath + ".old"
-	_ = os.Remove(oldBackup)
-	if err := os.Rename(oldPath, oldBackup); err != nil {
-		return err
+	// A previous process may still be using its backup. A unique name avoids
+	// making that process (or a leftover .old file) block this installation.
+	backup, err := os.CreateTemp(filepath.Dir(oldPath), "."+filepath.Base(oldPath)+".backup-*")
+	if err != nil {
+		return fmt.Errorf("创建旧程序备份路径失败: %w", err)
 	}
-	if err := os.Rename(newPath, oldPath); err != nil {
-		_ = os.Rename(oldBackup, oldPath)
-		return err
+	backupPath := backup.Name()
+	if err := backup.Close(); err != nil {
+		_ = os.Remove(backupPath)
+		return fmt.Errorf("关闭旧程序备份占位文件失败: %w", err)
 	}
-	go func() {
-		time.Sleep(3 * time.Second)
-		_ = os.Remove(oldBackup)
-	}()
+	if err := os.Remove(backupPath); err != nil {
+		return fmt.Errorf("准备旧程序备份路径失败: %w", err)
+	}
+	if err := rename(oldPath, backupPath); err != nil {
+		return fmt.Errorf("备份当前程序失败: %w", err)
+	}
+	if err := rename(stagedPath, oldPath); err != nil {
+		if rollbackErr := rename(backupPath, oldPath); rollbackErr != nil {
+			return errors.Join(
+				fmt.Errorf("替换程序文件失败: %w", err),
+				fmt.Errorf("恢复旧程序失败，旧程序备份保留在：%s: %w", backupPath, rollbackErr),
+			)
+		}
+		return fmt.Errorf("替换程序文件失败，已恢复旧程序: %w", err)
+	}
+	// The running Windows image can keep this backup locked until exit. Its
+	// cleanup is best effort and must not turn a successful update into failure.
+	_ = os.Remove(backupPath)
 	return nil
 }

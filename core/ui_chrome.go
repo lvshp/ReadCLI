@@ -19,7 +19,12 @@ func refreshChrome() {
 	header.SetText(termuiStyleToTview(buildHeader(th)))
 	left.SetText(termuiStyleToTview(buildLeftPanel(th)))
 	right.SetText(termuiStyleToTview(buildRightPanel(th)))
-	main.SetText(termuiStyleToTview(buildMainPanel()))
+	mainText := buildMainPanel()
+	if app.mode == modeUpdateError {
+		main.SetText(mainText)
+	} else {
+		main.SetText(termuiStyleToTview(mainText))
+	}
 	footer.SetText(termuiStyleToTview(buildFooter()))
 
 	main.SetTitle(buildMainTitle())
@@ -61,7 +66,7 @@ func refreshChrome() {
 	main.SetTextColor(currentReadingTextColor())
 
 	switch app.mode {
-	case modeUpdatePrompt:
+	case modeUpdatePrompt, modeUpdateError:
 		main.SetScrollable(true)
 		main.ScrollToBeginning()
 	default:
