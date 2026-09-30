@@ -110,14 +110,26 @@ func TestWindowsDeferredUpdateWaitsForRealParentExit(t *testing.T) {
 	if err := cmd.Wait(); err != nil {
 		t.Fatal(err)
 	}
+	// Observe the protocol instead of repeatedly opening the target EXE:
+	// os.Open on Windows does not share deletes, so hashing while the helper
+	// renames the executable can make this test itself prevent installation.
+	deadline = time.Now().Add(15 * time.Second)
 	for {
-		if err := helperVerifyHash(old, newHash); err == nil {
+		if failure, err := os.ReadFile(filepath.Join(dir, "failed.json")); err == nil {
+			log, _ := os.ReadFile(filepath.Join(dir, "update.log"))
+			t.Fatalf("helper failed: %s\n%s", failure, log)
+		}
+		if _, err := os.Stat(filepath.Join(dir, "installed.json")); err == nil {
 			break
 		}
 		if time.Now().After(deadline) {
-			t.Fatal("helper did not replace exited program")
+			log, _ := os.ReadFile(filepath.Join(dir, "update.log"))
+			t.Fatalf("helper did not replace exited program: %s", log)
 		}
 		time.Sleep(10 * time.Millisecond)
+	}
+	if err := helperVerifyHash(old, newHash); err != nil {
+		t.Fatal("installed executable differs from downloaded payload", err)
 	}
 	if output, err := exec.Command(old, "-test.run=^TestUpdateHelperRequestRejectsTamperingAndPathChanges$").CombinedOutput(); err != nil {
 		t.Fatalf("updated executable failed: %v\n%s", err, output)
