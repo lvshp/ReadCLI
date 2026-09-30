@@ -371,6 +371,8 @@ This project continues to use [Apache License 2.0](./LICENSE).
 
 Press `S` on the bookshelf to manage Legado JSON sources, or `s` to search enabled sources. Import a local JSON file or a direct JSON URL, toggle sources with Space, and use `L` to log in / `X` to log out. Search results support pagination; Enter opens an online book and adds it to your shelf. Chapters are loaded asynchronously and cached for offline reopening. Reading progress and bookmarks retain chapter identity. See [compatibility and usage](./docs/BOOK_SOURCES.md).
 
+Bring your own book sources. ReadCLI does not bundle, provide, or recommend sources.
+
 Search requests run across up to four sources at a time. Results appear as each source finishes, with completed and failed counts. Browse or open available books while other sources are still searching. Esc cancels remaining requests and keeps existing results; changing pages, starting another search, or opening a book cancels the previous search.
 
 Press uppercase `C` on a selected online book or while reading it to switch sources. Candidates show the source, author and latest chapter, including site information supplied by aggregate sources. Enter loads a preview of the matched chapter and reading position; Enter again confirms the replacement. The original book stays intact until confirmation. Progress and matching bookmarks migrate; unmatched bookmarks are retained and may require returning to the original source. Lowercase `c` still changes text color.

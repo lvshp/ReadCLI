@@ -178,7 +178,7 @@ func buildOnlinePanel() string {
 	case modeSourceLogin:
 		return buildSourceLoginPanel()
 	case modeSourceImport:
-		return "导入书源\n\n粘贴 Legado 书源 JSON 文件路径或 JSON 下载链接：\n\n" + renderInputWithCursor(app.uiState.input.value, app.uiState.input.cursor) + "\n\n支持单个书源或书源合集，按书源地址去重更新。\n源仓库的列表/详情网页不是 JSON，请复制其中的下载链接。\n导入后可启用、停用或移除书源。\n\n" + remoteLabel(app.online.busy)
+		return "导入书源\n\n粘贴自行准备的 Legado 书源 JSON 文件路径或 JSON 下载链接：\n\n" + renderInputWithCursor(app.uiState.input.value, app.uiState.input.cursor) + "\n\n支持单个书源或书源合集，按书源地址去重更新。\n仅支持 JSON 文件或直链，不支持 HTML 网页。\n导入后可启用、停用或移除书源。\n\n" + remoteLabel(app.online.busy)
 	case modeSourceDelete:
 		name := ""
 		if s := selectedSource(); s != nil {
@@ -203,7 +203,7 @@ func buildOnlinePanel() string {
 		}
 		lines := []string{"[书源管理](fg:cyan,mod:bold)", fmt.Sprintf("%d 个书源 · %d 个已启用", len(app.online.sources), enabled), "i 导入 · L 登录 · / 搜索", ""}
 		if len(app.online.sources) == 0 {
-			return strings.Join(append(lines, "暂无书源。按 i 导入 Legado JSON 或书源合集。", "", "书源列表：www.yckceo.com/yuedu/shuyuan/index.html", "书源合集：www.yckceo.com/yuedu/shuyuans/index.html"), "\n")
+			return strings.Join(append(lines, "暂无书源。按 i 导入自行准备的 Legado JSON。"), "\n")
 		}
 		start, end := onlineListBounds(app.online.sourceIndex, len(app.online.sources), 5, 2)
 		for i := start; i < end; i++ {
