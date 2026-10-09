@@ -4,8 +4,10 @@ import (
 	"errors"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"sync/atomic"
+	"syscall"
 	"testing"
 	"time"
 )
@@ -50,19 +52,25 @@ func helperProtocolFixture(t *testing.T) (string, updateHelperRequest, string, s
 func helperWaitState(t *testing.T, dir, name, nonce string) updateHelperState {
 	t.Helper()
 	deadline := time.After(3 * time.Second)
+	var lastReadError error
 	for {
 		state, exists, err := helperReadState(dir, name, nonce)
 		if err != nil {
-			t.Fatal(err)
+			// Windows may briefly deny reads while an atomic state-file rename
+			// completes. Keep waiting within the deadline, but fail other errors.
+			if runtime.GOOS != "windows" || (!errors.Is(err, syscall.Errno(32)) && !errors.Is(err, syscall.Errno(33))) {
+				t.Fatal(err)
+			}
+			lastReadError = err
 		}
 		if exists {
 			return state
 		}
 		select {
 		case <-deadline:
-			t.Fatalf("missing %s", name)
+			t.Fatalf("missing %s (last read error: %v)", name, lastReadError)
 		default:
-			time.Sleep(time.Millisecond)
+			time.Sleep(updateHelperPoll)
 		}
 	}
 }
