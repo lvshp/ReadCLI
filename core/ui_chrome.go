@@ -72,7 +72,7 @@ func refreshChrome() {
 	main.SetTextColor(currentReadingTextColor())
 
 	switch app.mode {
-	case modeUpdatePrompt:
+	case modeUpdatePrompt, modeUpdateError:
 		main.SetScrollable(true)
 		main.ScrollToBeginning()
 	default:

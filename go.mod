@@ -16,6 +16,7 @@ require (
 	github.com/ohler55/ojg v1.26.2
 	github.com/rivo/tview v0.42.0
 	golang.org/x/net v0.35.0
+	golang.org/x/sys v0.38.0
 	golang.org/x/text v0.31.0
 )
 
@@ -26,6 +27,5 @@ require (
 	github.com/google/pprof v0.0.0-20230207041349-798e818bf904 // indirect
 	github.com/lucasb-eyer/go-colorful v1.3.0 // indirect
 	github.com/rivo/uniseg v0.4.7 // indirect
-	golang.org/x/sys v0.38.0 // indirect
 	golang.org/x/term v0.37.0 // indirect
 )
