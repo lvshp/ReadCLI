@@ -8,8 +8,13 @@ on:
 
 jobs:
   test:
-    name: Test
-    runs-on: ubuntu-latest
+    name: Test (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -20,5 +25,15 @@ jobs:
           go-version: "1.24"
           cache: true
 
-      - name: Test
+      - name: Test Ubuntu
+        if: runner.os == 'Linux'
         run: go test ./...
+      - name: Test Windows updater
+        if: runner.os == 'Windows'
+        run: go test ./lib -run '^(TestShouldOfferUpdate|TestSelectReleaseAsset|TestUpdate|TestCopyWithProgress|TestInstallRelease|TestReplace|TestStage|TestWindows)' -count=1 -timeout=3m
+      - name: Test Windows update UI
+        if: runner.os == 'Windows'
+        run: go test ./core -run '^TestUpdate' -count=1 -timeout=3m
+      - name: Vet Windows updater
+        if: runner.os == 'Windows'
+        run: go vet ./lib ./core ./cmd

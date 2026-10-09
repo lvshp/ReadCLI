@@ -9,6 +9,9 @@ import (
 )
 
 func isOnlineMode(m mode) bool {
+	if isSourceManagerMode(m) || m == modeSourceHealth || m == modeSourceHealthInput {
+		return true
+	}
 	switch m {
 	case modeSourceSwitch, modeSourceSwitchConfirm, modeOnlineErrors, modeSourceLogin, modeSources, modeSourceImport, modeSourceDelete, modeOnlineSearchInput, modeOnlineResults:
 		return true
@@ -134,8 +137,10 @@ func handleOnlineEvent(id string) {
 			app.online.resultIndex = clamp(app.online.resultIndex-1, 0, max(0, len(app.online.results)-1))
 		case "<Enter>":
 			openSelectedOnlineBook()
-		case "/", "s":
-			startOnlineSearch(false)
+		case "/":
+			repeatScopedOnlineSearch()
+		case "s":
+			openSourceSearchScope()
 		case "S":
 			openSources()
 		case "n", "<Right>":
@@ -160,6 +165,12 @@ func onlineListBounds(index, count, headerLines, itemLines int) (int, int) {
 	return min(start, count), min(start+size, count)
 }
 func buildOnlinePanel() string {
+	if isSourceManagerMode(app.mode) {
+		return buildSourceManagerPanel()
+	}
+	if app.mode == modeSourceHealth || app.mode == modeSourceHealthInput {
+		return buildSourceHealthPanel()
+	}
 	switch app.mode {
 	case modeSourceSwitch:
 		return buildSourceSwitchPanel()
@@ -187,6 +198,9 @@ func buildOnlinePanel() string {
 		return "移除书源\n\n" + remoteLabel(name) + "\n\n仅移除书源定义，保留书架和已缓存章节。\n未缓存章节需重新导入书源后才能阅读。\n\n按 y 确认，Esc 返回。"
 	case modeOnlineSearchInput:
 		scope := "所有已启用书源"
+		if app.online.scopeLabel != "" {
+			scope = app.online.scopeLabel
+		}
 		for _, s := range app.online.sources {
 			if s.URL == app.online.scopeURL {
 				scope = s.Name
@@ -263,12 +277,24 @@ func buildOnlinePanel() string {
 	}
 }
 func buildOnlineLeftPanel() string {
+	if isSourceManagerMode(app.mode) {
+		return buildSourceManagerLeftPanel()
+	}
+	if app.mode == modeSourceHealth || app.mode == modeSourceHealthInput {
+		return buildSourceHealthLeftPanel()
+	}
 	if app.mode == modeSourceSwitch || app.mode == modeSourceSwitchConfirm {
 		return "[更换书源](fg:cyan,mod:bold)\n\n[候选列表](fg:yellow,mod:bold)\n  ↑/↓  选择版本\n  Enter 加载并预览\n  n/p  搜索上下页\n  r    刷新当前页\n  Esc/q 取消换源\n\n[确认换源](fg:yellow,mod:bold)\n  Enter/y 确认替换\n  Esc/q 返回候选\n\n加载中按 Esc 取消，\n返回原来的书架或阅读。\n确认前保留原书和进度。"
 	}
-	return "[阅读中心](fg:cyan,mod:bold)\n\n  q    返回书架\n  S    书源管理\n\n[书源管理](fg:yellow,mod:bold)\n  i    导入书源\n  L    登录书源\n  X    退出登录\n  P    净化配置\n  空格 启用/停用\n  /    搜索当前源\n  s    搜索全部\n  d    移除书源\n\n[搜索结果](fg:yellow,mod:bold)\n  /    重新搜索\n  n/p  上下页\n  Enter 在线阅读\n  Esc  取消加载"
+	return "[阅读中心](fg:cyan,mod:bold)\n\n  q    返回书架\n  S    书源管理\n\n[书源管理](fg:yellow,mod:bold)\n  i    导入书源\n  L    登录书源\n  X    退出登录\n  P    净化配置\n  空格 启用/停用\n  /    搜索当前源\n  s    选择搜索范围\n  d    移除书源\n\n[搜索结果](fg:yellow,mod:bold)\n  /    重新搜索\n  n/p  上下页\n  Enter 在线阅读\n  Esc  取消加载"
 }
 func buildOnlineRightPanel() string {
+	if isSourceManagerMode(app.mode) {
+		return buildSourceManagerRightPanel()
+	}
+	if app.mode == modeSourceHealth || app.mode == modeSourceHealthInput {
+		return buildSourceHealthRightPanel()
+	}
 	if app.mode == modeSourceSwitch || app.mode == modeSourceSwitchConfirm {
 		return buildSourceSwitchRightPanel()
 	}

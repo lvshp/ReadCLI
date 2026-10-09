@@ -40,6 +40,7 @@ const (
 	modeUpdatePrompt         mode = "update_prompt"
 	modeUpdating             mode = "updating"
 	modeUpdateRestart        mode = "update_restart"
+	modeUpdateError          mode = "update_error"
 )
 
 type updateMessageKind string
@@ -47,6 +48,7 @@ type updateMessageKind string
 const (
 	updateAvailable updateMessageKind = "available"
 	updateInstalled updateMessageKind = "installed"
+	updatePrepared  updateMessageKind = "prepared"
 	updateFailed    updateMessageKind = "failed"
 	updateCurrent   updateMessageKind = "current"
 	updateProgress  updateMessageKind = "progress"
@@ -120,6 +122,9 @@ type updateState struct {
 	messages     chan updateMessage
 	progress     lib.UpdateProgress
 	promptManual bool
+	failure      error
+	errorScroll  int
+	pendingExit  bool
 }
 
 type inputState struct {
@@ -156,6 +161,8 @@ type onlineState struct {
 	keyword     string
 	page        int
 	scopeURL    string
+	scopeKeys   map[string]bool
+	scopeLabel  string
 	busy        string
 	cancel      context.CancelFunc
 	requestID   uint64
@@ -167,10 +174,12 @@ type onlineState struct {
 }
 
 type appState struct {
-	purification purificationState
-	sourceSwitch sourceSwitchState
-	online       onlineState
-	mode         mode
+	sourceManager sourceManagerState
+	sourceHealth  sourceHealthState
+	purification  purificationState
+	sourceSwitch  sourceSwitchState
+	online        onlineState
+	mode          mode
 
 	reader      reader.Reader
 	currentFile string

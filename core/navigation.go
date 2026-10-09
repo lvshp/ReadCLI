@@ -381,6 +381,9 @@ func jumpSearch(forward bool) {
 }
 
 func transitionTo(m mode) {
+	if (app.mode == modeSourceHealth || app.mode == modeSourceHealthInput) && m != modeSourceHealth && m != modeSourceHealthInput {
+		cancelSourceHealth()
+	}
 	withinSearch := app.online.searching &&
 		(app.mode == modeOnlineResults || app.mode == modeOnlineErrors) &&
 		(m == modeOnlineResults || m == modeOnlineErrors)

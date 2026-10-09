@@ -19,7 +19,7 @@ func buildHeader(th theme) string {
 	}
 	if isOnlineMode(app.mode) {
 		modeLabel = "在线搜书"
-		if app.mode == modeSources || app.mode == modeSourceImport || app.mode == modeSourceDelete {
+		if isSourceManagerMode(app.mode) || app.mode == modeSourceHealth || app.mode == modeSourceHealthInput || app.mode == modeSourceImport || app.mode == modeSourceDelete {
 			modeLabel = "书源管理"
 		}
 		if app.mode == modeSourceLogin {
@@ -238,6 +238,12 @@ func buildFooter() string {
 	if lastTermWidth > 0 && lastTermWidth < 110 {
 		line1 = shortenDisplay("ReadCLI "+version+" · "+remoteLabel(app.uiState.statusMessage), max(1, lastTermWidth-2))
 	}
+	if isSourceManagerMode(app.mode) {
+		return line1 + "\n" + sourceManagerFooter()
+	}
+	if app.mode == modeSourceHealth || app.mode == modeSourceHealthInput {
+		return line1 + "\n1 规则 · 2 搜索 · 3 完整检查 · s 保存重试 · Esc 取消/返回"
+	}
 	switch app.mode {
 	case modePurification:
 		return line1 + "\n↑/↓ 选择 · i 导入 · r 重载 · Esc/q 返回"
@@ -290,7 +296,12 @@ func buildFooter() string {
 	case modeUpdating:
 		return line1 + "\n正在下载安装新版本，请稍候…"
 	case modeUpdateRestart:
+		if app.updateState.pendingExit {
+			return line1 + "\n[Enter/q](fg:cyan):退出并自动安装更新"
+		}
 		return line1 + "\n[Enter](fg:cyan):退出并手动重新启动  [q](fg:red):直接退出"
+	case modeUpdateError:
+		return line1 + "\n↑/↓ 滚动 · 空格 下一页 · g/G 首尾 · Esc/Enter 返回"
 	default:
 		return line1 + "\n[q](fg:red):退出"
 	}
@@ -355,7 +366,7 @@ func buildMainTitle() string {
 		return " bookshelf search "
 	case modeReadingJumpInput:
 		return " jump "
-	case modeUpdatePrompt, modeUpdating, modeUpdateRestart:
+	case modeUpdatePrompt, modeUpdating, modeUpdateRestart, modeUpdateError:
 		return " update "
 	default:
 		return " editor: " + currentDisplayName() + " "
@@ -431,6 +442,8 @@ func buildMainPanel() string {
 		return buildUpdatingPanel()
 	case modeUpdateRestart:
 		return buildUpdateRestartPanel()
+	case modeUpdateError:
+		return buildUpdateErrorPanel()
 	default:
 		if app.reader == nil {
 			return "未打开书籍"

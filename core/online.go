@@ -112,11 +112,11 @@ func openSources() {
 	app.readingState.showProgress = false
 }
 func selectedSource() *booksource.Source {
-	if len(app.online.sources) == 0 {
+	index := managerRawIndex()
+	if index < 0 {
 		return nil
 	}
-	app.online.sourceIndex = clamp(app.online.sourceIndex, 0, len(app.online.sources)-1)
-	return &app.online.sources[app.online.sourceIndex]
+	return &app.online.sources[index]
 }
 func persistSources(sources []booksource.Source) bool {
 	dir, err := lib.DataDirPath()
@@ -143,12 +143,9 @@ func importSources() {
 			return onlineError("导入失败", err)
 		}
 		return func() {
-			if !persistSources(booksource.MergeSources(app.online.sources, incoming)) {
-				return
-			}
-			transitionTo(modeSources)
+			managerOpenPreview(incoming, location)
 			app.online.errors = nil
-			setStatusf(statusInfo, "已导入/更新 %d 个书源，共 %d 个", len(incoming), len(app.online.sources))
+			setStatusf(statusInfo, "已读取 %d 个书源，请预览并确认导入", len(incoming))
 		}
 	})
 }
@@ -186,21 +183,26 @@ func toggleSource() {
 	if source == nil {
 		return
 	}
-	sources := append([]booksource.Source(nil), app.online.sources...)
+	sources := booksource.CloneSources(app.online.sources)
 	enabled := !source.IsEnabled()
-	sources[app.online.sourceIndex].Enabled = &enabled
-	if persistSources(sources) {
-		setStatus(statusInfo, "书源启用状态已保存")
+	if enabled {
+		if err := booksource.ValidateSource(*source); err != nil {
+			setStatus(statusError, err.Error())
+			return
+		}
 	}
+	sources[managerRawIndex()].Enabled = &enabled
+	managerCommit(sources, "书源启用状态已保存")
 }
 func deleteSource() {
 	source := selectedSource()
 	if source == nil {
 		return
 	}
-	sources := append([]booksource.Source(nil), app.online.sources[:app.online.sourceIndex]...)
-	sources = append(sources, app.online.sources[app.online.sourceIndex+1:]...)
-	if persistSources(sources) {
+	index := managerRawIndex()
+	sources := append([]booksource.Source(nil), app.online.sources[:index]...)
+	sources = append(sources, app.online.sources[index+1:]...)
+	if managerCommit(sources, "已移除书源，书架与缓存保留") {
 		transitionTo(modeSources)
 		setStatus(statusInfo, "已移除书源，书架与缓存保留")
 	}
@@ -208,9 +210,14 @@ func deleteSource() {
 func startOnlineSearch(selected bool) {
 	cancelOnlineRequest()
 	app.online.scopeURL = ""
+	app.online.scopeKeys = nil
+	app.online.scopeLabel = ""
 	if selected {
 		if source := selectedSource(); source != nil {
 			app.online.scopeURL = source.URL
+		} else {
+			setStatus(statusError, "当前没有选中的书源")
+			return
 		}
 	}
 	transitionTo(modeOnlineSearchInput)
@@ -237,7 +244,7 @@ func searchOnlinePage(page int) {
 	}
 	sources := []booksource.Source{}
 	for _, s := range app.online.sources {
-		if s.IsEnabled() && (app.online.scopeURL == "" || app.online.scopeURL == s.URL) {
+		if s.IsEnabled() && (app.online.scopeURL == "" || app.online.scopeURL == s.URL) && (app.online.scopeKeys == nil || app.online.scopeKeys[booksource.SourceKey(s)]) {
 			sources = append(sources, s)
 		}
 	}

@@ -35,6 +35,10 @@ func tcellKeyEventID(ev *tcell.EventKey) string {
 		return "<Tab>"
 	case tcell.KeyHome:
 		return "<Home>"
+	case tcell.KeyPgUp:
+		return "<PageUp>"
+	case tcell.KeyPgDn:
+		return "<PageDown>"
 	case tcell.KeyEnd:
 		return "<End>"
 	case tcell.KeyF1, tcell.KeyF2, tcell.KeyF3, tcell.KeyF4,

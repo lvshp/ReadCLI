@@ -1,6 +1,7 @@
 package core
 
 import (
+	"errors"
 	"fmt"
 	"os"
 	"runtime"
@@ -60,11 +61,14 @@ func handleUpdateMessage(message updateMessage) {
 		app.updateState.release = message.Release
 		app.updateState.promptManual = message.Manual
 		if app.mode != modeUpdating && app.mode != modeUpdateRestart {
-			app.updateState.returnMode = app.mode
+			if !isUpdateMode(app.mode) {
+				app.updateState.returnMode = app.mode
+			}
 			transitionTo(modeUpdatePrompt)
 		}
 		setStatus(statusInfo, "发现新版本 "+message.Release.TagName)
-	case updateInstalled:
+	case updateInstalled, updatePrepared:
+		app.updateState.pendingExit = message.Kind == updatePrepared
 		if message.Release != nil {
 			app.updateState.release = message.Release
 		}
@@ -73,14 +77,22 @@ func handleUpdateMessage(message updateMessage) {
 			saveConfig("保存配置")
 		}
 		transitionTo(modeUpdateRestart)
-		setStatus(statusInfo, "更新已安装，退出后重新启动生效")
-	case updateFailed:
-		transitionTo(app.updateState.returnMode)
-		if message.Err != nil {
-			setStatus(statusError, "更新失败: "+shorten(message.Err.Error(), 96))
+		if app.updateState.pendingExit {
+			setStatus(statusInfo, "更新文件已准备，退出后自动安装")
 		} else {
-			setStatus(statusError, "更新失败")
+			setStatus(statusInfo, "更新已安装，退出后重新启动生效")
 		}
+	case updateFailed:
+		if !isUpdateMode(app.mode) {
+			app.updateState.returnMode = app.mode
+		}
+		app.updateState.failure = message.Err
+		if app.updateState.failure == nil {
+			app.updateState.failure = errors.New("未能完成更新，请稍后重新检查。")
+		}
+		app.updateState.errorScroll = 0
+		transitionTo(modeUpdateError)
+		setStatus(statusError, "更新失败，请查看中间面板的完整原因")
 	case updateCurrent:
 		setStatus(statusInfo, "当前已经是最新版本")
 	case updateProgress:
@@ -114,6 +126,8 @@ func startUpdateInstall() {
 	}
 
 	transitionTo(modeUpdating)
+	app.updateState.failure = nil
+	app.updateState.pendingExit = false
 	app.updateState.progress = lib.UpdateProgress{Stage: lib.UpdateStageDownload}
 	setStatus(statusProgress, "正在安装更新 "+app.updateState.release.TagName)
 	renderUIIfReady()
@@ -129,7 +143,11 @@ func startUpdateInstall() {
 			app.updateState.messages <- updateMessage{Kind: updateFailed, Err: err}
 			return
 		}
-		app.updateState.messages <- updateMessage{Kind: updateInstalled, Release: release}
+		kind := updateInstalled
+		if runtime.GOOS == "windows" {
+			kind = updatePrepared
+		}
+		app.updateState.messages <- updateMessage{Kind: kind, Release: release}
 	}(app.currentVersion, app.updateState.release, asset.BrowserDownloadURL, executablePath)
 }
 
@@ -147,6 +165,8 @@ func updateProgressStatus(progress lib.UpdateProgress) string {
 		return "正在解压更新包..."
 	case lib.UpdateStageReplace:
 		return "正在替换当前程序..."
+	case lib.UpdateStagePrepare:
+		return "正在准备更新，如弹出管理员授权请确认..."
 	default:
 		return "正在安装更新..."
 	}

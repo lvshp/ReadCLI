@@ -47,7 +47,7 @@ go build -o readcli ./cmd
 
 推送到 `dev` 后，Release 工作流先测试，再从该次推送的提交构建 macOS arm64/amd64、Linux amd64 和 Windows amd64 安装包，自动发布为 **Pre-release**，不占用稳定版的 **Latest** 标志。
 
-- 版本号形如 `v0.3.7-dev.42.1`，末两段是 Actions 运行编号和准备步骤的重试次数；重新运行全部任务生成新版本，只重试失败任务则继续原次发布。
+- 版本号形如 `v0.4.1-dev.42.1`，末两段是 Actions 运行编号和准备步骤的重试次数；重新运行全部任务生成新版本，只重试失败任务则继续原次发布。
 - 下一正式版本号维护在 `.github/prerelease-version`，开发版说明维护在 `.github/release-notes/dev.md`。每次开发版包含该提交的完整说明，并附上提交和构建记录。
 - 也可在 Actions → Release → Run workflow 选择 `dev` 手动构建；选择其他分支会失败，避免误发布。
 - 测试版从 Releases 手动下载。应用内更新继续使用 GitHub 的稳定版接口，不分发预发布包。

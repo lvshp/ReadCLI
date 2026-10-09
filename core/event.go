@@ -22,7 +22,7 @@ func handleHomeEvent(id string) {
 	case "S":
 		openSources()
 	case "s":
-		startOnlineSearch(false)
+		openSourceSearchScope()
 	case "C":
 		openSourceSwitch()
 	case "P":
@@ -224,6 +224,8 @@ func handleTextInputEvent(id string, onEnter func()) {
 		}
 	case "<Backspace>", "<Backspace2>":
 		deleteInputBackward()
+	case "<Space>":
+		insertInputText(" ")
 	case "<Delete>":
 		deleteInputForward()
 	case "<Left>":
@@ -336,6 +338,14 @@ func handleUpdateRestartEvent(id string) {
 }
 
 func dispatchEvent(id string) {
+	if app.mode == modeSourceHealth || app.mode == modeSourceHealthInput {
+		handleSourceHealthEvent(id)
+		return
+	}
+	if isSourceManagerMode(app.mode) && app.online.busy == "" {
+		handleSourceManagerEvent(id)
+		return
+	}
 	if isPurificationMode(app.mode) {
 		handlePurificationEvent(id)
 		return
@@ -430,11 +440,15 @@ func dispatchUpdateEvent(id string) {
 		handleUpdatingEvent(id)
 	case modeUpdateRestart:
 		handleUpdateRestartEvent(id)
+	case modeUpdateError:
+		handleUpdateErrorEvent(id)
 	}
 }
 
 func isInputMode(m mode) bool {
 	switch m {
+	case modeSourceFilter, modeSourceImportFilter, modeSourceTag, modeSourceHealthInput:
+		return true
 	case modePurificationImport, modeSourceLogin, modeSourceImport, modeOnlineSearchInput, modeSearchInput, modeBookshelfSearchInput, modeReadingJumpInput, modeImportInput, modeReadingColorInput:
 		return true
 	default:
@@ -444,10 +458,32 @@ func isInputMode(m mode) bool {
 
 func isUpdateMode(m mode) bool {
 	switch m {
-	case modeUpdatePrompt, modeUpdating, modeUpdateRestart:
+	case modeUpdatePrompt, modeUpdating, modeUpdateRestart, modeUpdateError:
 		return true
 	default:
 		return false
+	}
+}
+
+func handleUpdateErrorEvent(id string) {
+	switch id {
+	case "<Escape>", "q", "<Enter>":
+		transitionTo(app.updateState.returnMode)
+		clearStatus()
+	case "<C-c>":
+		app.quit = true
+	case "j", "<Down>", "<C-n>":
+		moveUpdateErrors(1)
+	case "k", "<Up>", "<C-p>":
+		moveUpdateErrors(-1)
+	case "<Space>", "<PageDown>":
+		moveUpdateErrors(updateErrorPageSize())
+	case "<PageUp>":
+		moveUpdateErrors(-updateErrorPageSize())
+	case "g", "<Home>":
+		app.updateState.errorScroll = 0
+	case "G", "<End>":
+		moveUpdateErrors(len(updateErrorLines()))
 	}
 }
 

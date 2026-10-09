@@ -76,10 +76,12 @@ func (c *Client) Import(ctx context.Context, location string) ([]Source, error) 
 	if err := ctx.Err(); err != nil {
 		return nil, err
 	}
-	return decodeSources(data)
+	return decodeSourceData(data, false)
 }
 
-func decodeSources(data []byte) ([]Source, error) {
+func decodeSources(data []byte) ([]Source, error) { return decodeSourceData(data, true) }
+
+func decodeSourceData(data []byte, trustManagement bool) ([]Source, error) {
 	data = bytes.TrimSpace(bytes.TrimPrefix(data, []byte{0xef, 0xbb, 0xbf}))
 	if len(data) == 0 {
 		return nil, fmt.Errorf("书源文件为空")
@@ -97,6 +99,18 @@ func decodeSources(data []byte) ([]Source, error) {
 	}
 	sources := make([]Source, 0, len(records))
 	for i, record := range records {
+		if !trustManagement {
+			var fields map[string]json.RawMessage
+			if err := json.Unmarshal(record, &fields); err != nil || fields == nil {
+				return nil, fmt.Errorf("第 %d 个书源必须是 JSON 对象", i+1)
+			}
+			removeSourceManagementFields(fields)
+			var err error
+			record, err = json.Marshal(fields)
+			if err != nil {
+				return nil, fmt.Errorf("第 %d 个书源: %w", i+1, err)
+			}
+		}
 		var source Source
 		if err := json.Unmarshal(record, &source); err != nil {
 			return nil, fmt.Errorf("第 %d 个书源: %w", i+1, err)
@@ -146,18 +160,36 @@ func SaveSources(dataDir string, sources []Source) error {
 	}
 	return atomicWrite(filepath.Join(dataDir, sourceFile), append(data, '\n'))
 }
+
+// MergeSources keeps the original API for callers without import collections.
+// Downloaded rules replace matching URLs; local preferences remain authoritative.
 func MergeSources(existing, incoming []Source) []Source {
-	merged := make([]Source, 0, len(existing)+len(incoming))
-	index := make(map[string]int)
-	for _, sources := range [][]Source{existing, incoming} {
-		for _, source := range sources {
-			key := strings.TrimSpace(source.URL)
-			if i, ok := index[key]; ok {
-				merged[i] = source
-			} else {
-				index[key] = len(merged)
-				merged = append(merged, source)
+	merged := uniqueSources(existing, false)
+	index := make(map[string]int, len(merged))
+	for i, source := range merged {
+		index[SourceKey(source)] = i
+	}
+	for _, source := range uniqueSources(incoming, true) {
+		key := SourceKey(source)
+		if i, exists := index[key]; exists {
+			changed := SourceDefinitionFingerprint(source) != SourceDefinitionFingerprint(merged[i])
+			source.Enabled = merged[i].Enabled
+			source.Management = merged[i].Management
+			if changed && source.Management != nil {
+				source.Management.Check = nil
 			}
+			if ValidateSource(source) != nil {
+				enabled := false
+				source.Enabled = &enabled
+			}
+			merged[i] = source
+		} else {
+			if ValidateSource(source) != nil {
+				enabled := false
+				source.Enabled = &enabled
+			}
+			index[key] = len(merged)
+			merged = append(merged, source)
 		}
 	}
 	return merged

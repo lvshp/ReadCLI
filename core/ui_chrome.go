@@ -22,7 +22,7 @@ func refreshChrome() {
 	right.SetText(termuiStyleToTview(buildRightPanel(th)))
 	mainText := buildMainPanel()
 	_, onlineReader := app.reader.(*reader.OnlineReader)
-	if app.mode == modeReading && onlineReader && !app.readingState.showHelp && !app.readingState.showProgress {
+	if app.mode == modeUpdateError || (app.mode == modeReading && onlineReader && !app.readingState.showHelp && !app.readingState.showProgress) {
 		main.SetText(mainText)
 	} else {
 		main.SetText(termuiStyleToTview(mainText))

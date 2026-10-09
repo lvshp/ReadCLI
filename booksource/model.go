@@ -5,9 +5,12 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"reflect"
+	"strings"
 )
 
 type Source struct {
+	Management   *SourceManagement          `json:"readcli,omitempty"`
 	LoginURL     string                     `json:"loginUrl,omitempty"`
 	LoginUI      json.RawMessage            `json:"loginUi,omitempty"`
 	LoginCheckJS string                     `json:"loginCheckJs,omitempty"`
@@ -79,10 +82,22 @@ func (s Source) MarshalJSON() ([]byte, error) {
 	for key, value := range s.Extra {
 		merged[key] = value
 	}
+	// Extra retains unknown source fields only at serialization time. Remove
+	// every recognized field first, including omitted zero values, so clearing
+	// local metadata or an optional rule cannot revive its previously loaded value.
+	removeKnownJSONFields(merged, plain{})
 	for key, value := range known {
 		if key == "ruleSearch" || key == "ruleBookInfo" || key == "ruleToc" || key == "ruleContent" {
 			var original, changed map[string]json.RawMessage
-			if json.Unmarshal(merged[key], &original) == nil && original != nil && json.Unmarshal(value, &changed) == nil {
+			if json.Unmarshal(s.Extra[key], &original) == nil && original != nil && json.Unmarshal(value, &changed) == nil {
+				switch key {
+				case "ruleSearch", "ruleBookInfo":
+					removeKnownJSONFields(original, BookRule{})
+				case "ruleToc":
+					removeKnownJSONFields(original, TOCRule{})
+				case "ruleContent":
+					removeKnownJSONFields(original, ContentRule{})
+				}
 				for field, v := range changed {
 					original[field] = v
 				}
@@ -95,6 +110,21 @@ func (s Source) MarshalJSON() ([]byte, error) {
 		merged[key] = value
 	}
 	return json.Marshal(merged)
+}
+
+func removeKnownJSONFields(fields map[string]json.RawMessage, shape any) {
+	typ := reflect.TypeOf(shape)
+	for i := 0; i < typ.NumField(); i++ {
+		field := typ.Field(i)
+		name := strings.SplitN(field.Tag.Get("json"), ",", 2)[0]
+		if name == "-" {
+			continue
+		}
+		if name == "" {
+			name = field.Name
+		}
+		delete(fields, name)
+	}
 }
 
 type BookRule struct {

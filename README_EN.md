@@ -236,6 +236,8 @@ If you skip an update from the automatic prompt, that version will not be shown 
 
 When you confirm an update, ReadCLI downloads the correct release package for the current platform and replaces the current binary. During the update it shows the download percentage, progress bar, downloaded size, and install stage. Restart the app after the update finishes.
 
+On Windows, the new executable is staged in the installation directory first. Once the update is ready, press Enter to exit; an update helper replaces the executable after ReadCLI exits. Protected directories such as `Program Files` require administrator approval. Cancelling that approval preserves the existing executable. Failures show scrollable details and the location of recovery files. Versions 0.3.5/0.3.6 with the older updater may need one manual replacement to receive the fix for directory permissions and cross-volume updates.
+
 ### 6. Configure Boss Key
 
 By default, pressing `b` switches to the built-in disguise page.
@@ -372,6 +374,8 @@ This project continues to use [Apache License 2.0](./LICENSE).
 Press `S` on the bookshelf to manage Legado JSON sources, or `s` to search enabled sources. Import a local JSON file or a direct JSON URL, toggle sources with Space, and use `L` to log in / `X` to log out. Search results support pagination; Enter opens an online book and adds it to your shelf. Chapters are loaded asynchronously and cached for offline reopening. Reading progress and bookmarks retain chapter identity. See [compatibility and usage](./docs/BOOK_SOURCES.md).
 
 Bring your own book sources. ReadCLI does not bundle, provide, or recommend sources.
+
+For large source libraries, use `f` to filter, `g` for groups and collections, `v` to select multiple sources, `b` for batch actions, `*` to favorite, `h` for manual checks, and `u` to undo the last management action. Imports open a preview; new sources are disabled by default, with `e` to change that choice. Reimporting preserves enabled states, favorites and local tags. Press `s` to search favorites, the filtered view, selected sources or all enabled sources.
 
 Search requests run across up to four sources at a time. Results appear as each source finishes, with completed and failed counts. Browse or open available books while other sources are still searching. Esc cancels remaining requests and keeps existing results; changing pages, starting another search, or opening a book cancels the previous search.
 

@@ -39,9 +39,14 @@ jobs:
           overwrite: true
 
   test:
-    name: Test
+    name: Test (${{ matrix.os }})
     needs: prepare
-    runs-on: ubuntu-latest
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
     steps:
       - uses: actions/checkout@v4
         with:
@@ -50,8 +55,21 @@ jobs:
         with:
           go-version: "1.24"
           cache: true
-      - run: go test ./...
-      - run: go vet ./...
+      - name: Test Ubuntu
+        if: runner.os == 'Linux'
+        run: go test ./...
+      - name: Vet Ubuntu
+        if: runner.os == 'Linux'
+        run: go vet ./...
+      - name: Test Windows updater
+        if: runner.os == 'Windows'
+        run: go test ./lib -run '^(TestShouldOfferUpdate|TestSelectReleaseAsset|TestUpdate|TestCopyWithProgress|TestInstallRelease|TestReplace|TestStage|TestWindows)' -count=1 -timeout=3m
+      - name: Test Windows update UI
+        if: runner.os == 'Windows'
+        run: go test ./core -run '^TestUpdate' -count=1 -timeout=3m
+      - name: Vet Windows updater
+        if: runner.os == 'Windows'
+        run: go vet ./lib ./core ./cmd
 
   build-and-release:
     name: Build Archives

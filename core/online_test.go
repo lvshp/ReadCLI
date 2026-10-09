@@ -80,7 +80,7 @@ func TestSourceManagementNavigationAndPasswordMask(t *testing.T) {
 		t.Fatal("login input not cleared")
 	}
 	dispatchEvent("d")
-	if app.mode != modeSourceDelete {
+	if app.mode != modeSourceConfirm || len(app.sourceManager.pending.keys) != 1 || app.sourceManager.pending.keys[0] != "https://example.test" {
 		t.Fatal("delete confirmation missing")
 	}
 	dispatchEvent("y")

@@ -12,6 +12,9 @@ import (
 var Version string
 
 func main() {
+	if handled, code := lib.RunUpdateHelper(os.Args[1:]); handled {
+		os.Exit(code)
+	}
 	lines := flag.Int("n", 0, "number of lines to display at once")
 	showVersion := flag.Bool("v", false, "display version")
 	flag.Parse()

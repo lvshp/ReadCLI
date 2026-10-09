@@ -150,6 +150,7 @@ func Run(initialFile string, requestedLines int, version string) {
 
 	err := tApp.Run()
 	cancelOnlineRequest()
+	cancelSourceHealth()
 	persistState()
 	if err != nil {
 		log.Fatalf("failed to start application: %v", err)
